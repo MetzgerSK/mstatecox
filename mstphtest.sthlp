@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 10feb2018}{...}
+{* *! version 04may2021}{...}
 {viewerjumpto "Syntax" "mstphtest##syntax"}{...}
 {viewerjumpto "Description" "mstphtest##description"}{...}
 {viewerjumpto "Examples" "mstphtest##examples"}{...}
@@ -40,7 +40,7 @@ Must first run {help stcox} and {help mstutil} before running {bf:mstphtest}.{p_
 
 {pstd}
 {cmd:mstphtest} is a wrapper function to correctly run proportional hazard tests from a multi-state model.  
-It tests the proportional hazard (PH) assumption for each transition separately using Stata's {help estat phtest} and reports these results to the user.{p_end}
+It tests the proportional hazard (PH) assumption for each stratum separately using Stata's {help estat phtest} and reports these results to the user.  Each stratum will correspond to a unique transition in the model unless you have collapsed any baseline hazards.{p_end}
 
 {pstd}
 Stata's {help estat phtest:PH test} relies on scaled Schoenfeld residuals.  
@@ -96,12 +96,10 @@ In the presence of a single transition, {cmd:mstphtest, {it:phtest_opts}} is ide
 {marker results}{...}
 {title:Stored Results}
 
-{pstd}
-Unlike {help estat phtest}, {cmd:mstphtest} specifically stores nothing in {bf:r()} because it is performing multiple PH tests for you.
-
-{pstd}
-Users needing {bf:estat phtest}'s {bf:r()} output for a particular transition must (1) estimate a Cox model using only observations associated with that transition, before (2) running {help estat phtest}, for (3) every transition in the model.  
-These are the same steps {bf:mstphtest} automates for you.{p_end}
+{synoptset 22 tabbed}{...}
+{p2col 5 15 19 2: Matrices}{p_end}
+{synopt:{cmd:phtest_{it:stratumID}}} a matrix for each stratum containing the separate {cmd: estat phtest} results each covariate.  {it:strataID} corresponds to {bf:e(strata)}'s value.{p_end}
+{synopt:{cmd:global_{it:stratumID}}} a matrix for each stratum containing the degrees of freedom, chi2 value, and corresponding p-value for the global test.{p_end}
 
 
 {marker cite}{...}
@@ -117,6 +115,6 @@ These are the same steps {bf:mstphtest} automates for you.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 10FEB18
+{bf:Last Updated} - 04MAY21
 {p_end}
 
