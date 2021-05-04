@@ -9,7 +9,7 @@
 	* v2: rewrite to deal with possibility that collapsed covariate effects might exist.
 */
 
-*! Last edited: 04MAY21 (no changes for MAR19 update)
+*! Last edited: 04MAY21
 *! Last change: removed code for VCE override.
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
@@ -41,10 +41,6 @@ qui{
 	tempname skm_b skm_V
 	matrix `skm_b' = e(b)
 	matrix `skm_V' = e(V)
-	if("`e(vce)'"!="oim"){
-		tempname skm_V_mb
-		matrix `skm_V_mb' = e(V_modelbased)
-	}
 	local namesB: colnames `skm_b'
 	
 	// Check to make sure, first, that there aren't TVCs.  If so, kick preemptive error.
@@ -57,6 +53,9 @@ qui{
 	}
 	
 	local transVar `e(trans)'
+		
+	// If detail not present as an option, add it.
+	if(!regexm("`options'", "d[a-z]*"))	local options = "`options' detail"
 	
 	// Get the varlist for each strata
 	qui levelsof `transVar', local(transIDs)
@@ -93,16 +92,27 @@ qui{
 			if("`ties'"=="none")	local ties = ""		// to prevent "option none not allowed" error
 			
 			// The 12SEP17 fix.
-			qui stcox `eqCovars' if(`transVar'==`tr' & `flag19'==1), 	`ties' vce(`vce' `vceVar') nohr estimate ///
-																		matfrom(`skm_bSubset') iter(0) norefine		//<- the key part.  Reestimate using the overall model as your bHats, and don't maximize, at all. 			
-			cap qui estat phtest, `options' d
+			qui stcox `eqCovars' if(`transVar'==`tr' & `flag19'==1), 	///
+					`ties' vce(`vce' `vceVar') nohr estimate ///
+					matfrom(`skm_bSubset') iter(0) norefine		//<- the key part.  Reestimate using the overall model as your bHats, and don't maximize, at all. 			
+			
+			cap qui estat phtest, `options'
 			
 			// If no error, say loudly
-			if(_rc==0)				noi estat phtest, `options' d
+			if(_rc==0)				noi estat phtest, `options'
 			// If error, say insuff obsvs.
 			if(_rc==2001)			noi di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
 			// If any other error, just be generic.
-			if(_rc!=0 & _rc!=2001)	noi di as err "Error in computing PH test (error code "_rc").  Compute manually to see the specific message."
+			if(_rc!=0 & _rc!=2001)	noi di as err "Error in computing PH test (error code " _rc ").  Compute manually to see the specific message."
+		
+			// Store table for r()
+			tempname phtest`tr' global`tr'
+			* covariates
+			matrix `phtest`tr'' = r(phtest)
+			* global test
+			matrix `global`tr'' = (r(df), r(chi2), r(p))
+			matrix colnames `global`tr'' = df chi2 p
+			matrix rownames `global`tr'' = e(strata)==`tr'
 		}
 		else{
 			noi di _col(7) in gr "No covariates detected for transition " as ye `tr' as gr "."
@@ -111,11 +121,19 @@ qui{
 	}
 	
 	cap drop `flag19'
-	foreach mat in `skm_b' `skm_V' `skm_tvc' `skm_bSubset' `skm_vSubset' `skm_V_mb' `skm_vSubset_mb'{
+	foreach mat in `skm_b' `skm_V' `skm_tvc' `skm_bSubset' `skm_vSubset'{
 		cap matrix drop `mat'
 	}
 	
 	_estimates unhold origCox
 	return clear
+	
+	// Return table estimates as a series of matrices
+	foreach tr of local transIDs{
+	    foreach pref in "phtest" "global"{
+			cap return matrix `pref'_`tr' ``pref'`tr''
+			cap matrix drop ``pref'`tr''
+		}
+	}
 }
 end
