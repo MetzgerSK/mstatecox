@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 12APR19 [v3.11]
-*! Last change: Fixed issue with gap time and non-int fail times for speed option; stjoin now also joining as it should if invoked
+*! Last edited: 01NOV19 [v3.21]	
+*! Last change: Fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -424,7 +424,7 @@ qui{
 			}
 			
 			* REESTM
-			stcox `ticDemean'  if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)') ///
+			stcox `ticDemean'  if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
 												matfrom(`skm_b') iter(0) norefine		// to speed things along
 			
 			* BASELINE HAZARD 
@@ -472,7 +472,7 @@ qui{
 				local texp = "`e(texp)'"
 				
 				// Have it your way, Stata.  Just reestimate everything, for now.  
-				stcox `namesTIC' `tvcStr' if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)') ///
+				stcox `namesTIC' `tvcStr' if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
 														matfrom(`skm_b') /*iter(0) norefine*/	// *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
 				
