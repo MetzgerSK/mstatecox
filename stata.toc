@@ -1,0 +1,5 @@
+v 2
+d mstatecox
+d 'mstatecox', commands for non-parametric and semi-parametric multistate duration models.
+d:
+p mstatecox 

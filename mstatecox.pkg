@@ -1,0 +1,26 @@
+v 2
+
+d mstatecox
+d 'mstatecox', commands for non-parametric and semi-parametric multi-state duration modeling.
+d
+d Author: Shawna K. Metzger, shawna@shawnakmetzger.com
+d Author: Benjamin T. Jones, btjones1@olemiss.edu
+d  
+d After install, see 'help mst' for package overview.
+
+f mstcovar.ado
+f mstdraw.ado
+f mstphtest.ado
+f mstsample.ado
+f msttvc.ado
+f mstutil.ado
+
+f mst.sthlp
+f mstcovar.sthlp
+f mstdraw.sthlp
+f mstphtest.sthlp
+f mstsample.sthlp
+f msttvc.sthlp
+f mstutil.sthlp
+
+e
