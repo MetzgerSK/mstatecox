@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 01NOV19 [v3.21]	
-*! Last change: Fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
+*! Last edited: 04MAY21 [v3.22]
+*! Last change: Incorporated frailty's value into msfit calculations (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -17,7 +17,7 @@
 							whether the msfit matrix should be put into memory and kept, whether _simMstate() should post the stage results (vs. path),
 							the slice trigger value (for processing); whether we're brute forcing fixed horizons; whether mstsample should override
 							the datasig check when generating the Cox quants
-							
+
 	// Output: (potentially) variables containing
 				(1) the t's for the simulation run
 				(2) for every stage, the stage-occupation probabilities at t, averaged across all the simulations
@@ -405,7 +405,40 @@ qui{
 		// manual sample flag (JIC)
 		tempvar flag19
 		gen `flag19' = e(sample)
-			 
+		
+		// Pull any info on frailty term
+		if("`e(shared)'"!=""){
+			local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
+			local reest_tr = ""	// no strata currently possible if frailty term present.
+			* get frailty value
+			local frVal = "$mstcovar_lFr"
+			local frNote = ""
+			if("`frVal'"==""){
+				local frVal = 0	// if no log-frailty given, set to 0
+				local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+			}
+			
+			* populate the shortcut macro with nothing
+			local reest_shtct = ""
+
+			// Give user an apology message
+			noi di _n as ye "> NOTE: " as gr ///
+			  "Your model has a frailty term.  {bf:mstsample} reestimates your model using demeaned covariates to "
+			noi di as gr _col(9) /// 
+			  "obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual quick  "
+			noi di as gr _col(9)  ///   
+			  "shortcut to do this when a frailty term is present--it has to reestimate your entire model.  As a "
+			noi di as gr _col(9)  ///
+			  "result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
+		}
+		else{
+			local reest_fr = ""
+			local reest_tr = "strata(`trans')"
+			local frVal = 0	// nothing to add, if this isn't a frailty model
+			local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
+		}
+		
+		// REESTMATE
 		if(`tvc'==.){
 			** REESTIMATE WITH DEMEANED		- 20FEB19
 			_estimates hold origCox, restore copy
@@ -424,8 +457,10 @@ qui{
 			}
 			
 			* REESTM
-			stcox `ticDemean'  if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
-												matfrom(`skm_b') iter(0) norefine		// to speed things along
+			stcox `ticDemean'  if(`flag19'==1), ///
+						`tieType' `reest_tr' `reest_fr' ///
+						vce(`e(vce)' `e(clustvar)') ///
+						`reest_shtct'		// to speed things along
 			
 			* BASELINE HAZARD 
 			qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
@@ -472,9 +507,11 @@ qui{
 				local texp = "`e(texp)'"
 				
 				// Have it your way, Stata.  Just reestimate everything, for now.  
-				stcox `namesTIC' `tvcStr' if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
-														matfrom(`skm_b') /*iter(0) norefine*/	// *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
-				
+				stcox `namesTIC' `tvcStr' if(`flag19'==1), ///
+						`tieType' `reest_tr' `reest_fr' ///
+						vce(`e(vce)' `e(clustvar)') ///
+						`reest_shtct'	// *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
+		
 				
 				// Fine.
 				matrix drop `skm_tvc' `skm_tic'
@@ -525,7 +562,7 @@ qui{
 				
 				// Get the final prediction for H0.
 				tempvar pieces H
-				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC') 
+				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal') 
 				bysort trans (_t): gen `H' = sum(`pieces')
 				gduplicates drop _t `trans', force
 				keep _t `trans' `H'
@@ -614,7 +651,7 @@ qui{
 			* combine into the HR.
 			cap drop `hr'
 			tempvar hr
-			gen double `hr' = exp(`xbTIV')
+			gen double `hr' = exp(`xbTIV'+`frVal')
 
 			* insert the prediction-to-matrix conversion here before the restore
 			cap drop `hrMat'
@@ -676,7 +713,7 @@ qui{
 		bysort `trans' (_t): gen double `naH' = sum(`intermed')
 		
 		// 21FEB19 mod - keep in H0 form
-		replace `H0' = `naH'
+		replace `H0' = `naH'*exp(`frVal')
 		
 		cap drop `stshaz'
 		cap drop `intermed'
@@ -688,7 +725,7 @@ qui{
 	if(`tvc'==.)    gen double `Haz' = `H0' * `hr'
 	else{		
 		gen double `Haz' = `H'		
-		drop `H'		
+		drop `basehc' `H'		
 	}
 	noi di as gr "." _c			// display message
 	
@@ -1078,8 +1115,8 @@ qui{
 	}
 	
 	noi di _n as gr "Simulations underway."
-		timer clear 19
-		timer on 19
+		timer clear 76
+		timer on 76
 	
 	mata: resFinal = .
 	mata: resFinalPath = .
@@ -1092,7 +1129,7 @@ qui{
 					"`folderName'", "`fixedhorz'", "`bforce'", `noiYN', "`speed'", `ci', ///
 					resFinal, resFinalPath, "`pathspeed'")
 																			// notice: no longer tMax_inputted, but tmax, where tmax = inputted + 1 (while tshooting the boundary thing)
-		timer off 19
+		timer off 76
 		
 	cap mata: mata drop mstate_intRslts
 	mata: mata rename resFinalPath mstate_intRslts
@@ -1112,17 +1149,14 @@ qui{
 **** // Third, process the results. // ****
 	qui timer list
 	local spc ""
-	if(`r(t19)'>180 | "`speed'"!="")	local spc = "_c"
+	if(`r(t76)'>180 | "`speed'"!="")	local spc = "_c"
 	noi di _n `spc' as gr "Processing results."
-	if(`r(t19)'>180 & "`speed'"=="")	noi di as gr "  (This may take a suspiciously long while because of the number of simulations you ran.  Please hold.)"
+	if(`r(t76)'>180 & "`speed'"=="")	noi di as gr "  (This may take a suspiciously long while because of the number of simulations you ran.  Please hold.)"
 	else if("`speed'"!="")				noi di as gr "  ({bf:speed} option specified.)"
 	{
 	* get the percentiles
 	local low = (100-`ci')/2
 	local high = 100-`low'
-	
-	timer clear 20
-	timer on 20
 		
 		local mataSv = 0					// sticking this here, for now.
 		local pathTrigger = `slicetrigger'	// how many path observations (which will be imperfect, because cannot tell how many path obsvs without opening the dataset.)
@@ -1290,6 +1324,12 @@ qui{
 			if("`bforce'"!="")		local stObsv = `tPoints' - 1
 			noi list ``gen'_Rslt_t' ``gen'_Rslt_stage`s'_m' ``gen'_Rslt_stage`s'_lb' ``gen'_Rslt_stage`s'_ub' in `stObsv'/`tPoints' if(``gen'_Rslt_t'<=`tMax_inputted'), noobs sep(`tPoints') subvar ab(`spacing')
 			
+			// If frailty present, but no value specified, make note about frailty
+			// being set to 0
+			if("`frNote'"!=""){
+				noi di _n as gr "`frNote'"
+				noi di ""
+			}
 			
 			// If the user wants the vars in memory, create them.
 			if(`keepHolders'==1){
@@ -1475,8 +1515,6 @@ qui{
 		noi di ""
 	}
 	} // end of convenience collapse for result 
-	
-	timer off 20
 	
 	* end of convenience collapse for result chunk
 	mat drop `skm_b'

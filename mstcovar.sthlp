@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 21feb2019}{...}
+{* *! version 04may2021}{...}
 {viewerjumpto "Syntax" "mstcovar##syntax"}{...}
 {viewerjumpto "Description" "mstcovar##description"}{...}
 {viewerjumpto "Options" "mstcovar##options"}{...}
@@ -23,17 +23,18 @@
 {title:Syntax}
 
 {p 4 16 2}
-{hi:mstcovar}{cmd: {varname}} {ifin}, {opt n:ames(varlist)} [{opt v:alue(stats)} {opt rep:lace} {opt clear}]
+{hi:mstcovar}{cmd: {varname}} {ifin}, {opt n:ames(varlist)} [{opt v:alue(stats)} {opt rep:lace} {opt fr:ailty} {opt clear}]
 
 {synoptset 20 tabbed}{...}
 {synopthdr}
 {synoptline}
 {syntab:Required}
-{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless {bf:sdur} specified for {bf:mstutil}{p_end}
+{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless (1) {opt frailty} specified or (2) {opt sdur} specified for {cmd:mstutil}{p_end}
 
 {syntab:Optional}
-{synopt :{opt v:alue(stats)}}value at which the variables in question should be held, default is median.{p_end}
+{synopt :{opt v:alue(stats)}}value at which the variable(s) in question should be held, default is median.  If {opt frailty} specified, represents the log-frailty's value.{p_end}
 {synopt :{opt rep:lace}}required if defining a new transition-specific covariate list for a previously {bf:mstcovar}-set {it:varname}.{p_end}
+{synopt :{opt fr:ailty}}{opt value()}'s {it:stats} represents the log-frailty's value; default value is 0.  Relevant only if {opt shared()} specified for {cmd:stcox}.{p_end}
 {synopt :{opt clear}}clears all {bf:mstcovar}-related information from memory; supersedes all other options, if specified{p_end}
 {synoptline}
 
@@ -76,21 +77,24 @@ typing {bf:clear *} in Stata.  {bf: mstcovar, clear} is the only way to ensure y
 	{pmore}If the master covariate's list is already in memory and you are simply changing the covariate's value, {opt names()} is not required.{p_end}
 	{pmore}If {bf:sdur} was specified in the {cmd:mstutil} statement, {opt names()} is not required, ever.  
 The model has only one transition, and therefore, only one "transition-specific" covariate can be present--the master variable specified via {it:varname}.{p_end}
+	{pmore}If {bf:frailty} was specified, {opt names()} is irrelevant and will be ignored.{p_end}
 
 {dlgtab:Optional}
 
 {phang}{opt v:alue(stats)} specifies the value at which this particular variable (and its transition-specific equivalents) should be held.  {it:stats} can be:{p_end}
-	{pmore2}1.) A numerical expression or value (e.g., ln(5), -234, 0.9*7){p_end}
+	{pmore2}1.) A numerical expression or value (e.g., ln(5), -234, 0.9*7).  If {opt frailty} is specified, this is the only permissible possibility.{p_end}
 	{pmore2}2.) One of {help tabstat##statname:tabstat}'s statistics.  Only one statistic may be specified at a time.{p_end}
 	{pmore}If you want to calculate a statistic using estimation sample observations only, be sure to specify {bf:if(e(sample)==1)}.{p_end}
 	{pmore}If nothing is entered for {bf:value()}, {bf:mstcovar} will set the covariate equal to its median value.{p_end}
 
 {phang}{opt rep:lace} is required to override any current variable list for a given master covariate.  It exists to minimize the chance of accidental user errors while {cmd:mstcovar}ing.  
 You may want to override an existing list if you previously entered the list incorrectly or if the list needs updating (e.g., you collapse some transitions, constraining the covariate's effect to be equal).{p_end}
-	{pmore}If you do not specify {bf:replace}, Stata will look at which transition-specific variable names are in {bf:name()} 
+	{pmore}If you do not specify {bf:replace}, Stata will look at which transition-specific variable names are in {bf:names()} 
 	for {it:varname}, compare {it:varname}'s new list to {it:varname}'s list in memory, see the two are not the same, and throw an error.{p_end}  
-{pmore}As a corollary, for convenience, you could enter the same list of covariates over and over again in {bf:name()} {it:without} specifying {bf:replace}, since there are no differences between your 'new' list and the list in memory.{p_end}
+{pmore}As a corollary, for convenience, you could enter the same list of covariates over and over again in {bf:names()} {it:without} specifying {bf:replace}, since there are no differences between your 'new' list and the list in memory.{p_end}
 	
+{phang}{opt fr:ailty} signifies that the value entered into {opt value()} is for the log-frailty term (also known as the random effect).  The log-frailty = {opt value()} implies that the frailty = exp({opt value}).  If no log-frailty value is set by {cmd:mstcovar}, {cmd mstsample} will automatically set the log-frailty to 0, the log-frailty's mean.  If you specify {opt frailty} but also give a {cmd tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.
+
 {phang}{opt clear} will clear all of {cmd:mstcovar}'s variable lists in memory and {cmd:mstcovar}'s covariate values matrix.  If {bf:clear} is present, {cmd:mstcovar} will ignore any other option you specify.{p_end}
 	{pmore}We {it:{opt strongly}} recommend **always** inserting {bf: mstcovar, clear} before your initial set of {bf:mstcovar} statements.
 	  Stata's {bf:clear *} will purge {cmd:mstcovar}'s covariate matrix from memory, but not {cmd:mstcovar}'s lists, which are stored in global macros. {p_end}
@@ -177,5 +181,5 @@ You may want to override an existing list if you previously entered the list inc
 
 
 {p 0 0 0}
-{bf:Last Updated} - 21FEB19
+{bf:Last Updated} - 04MAY21
 {p_end}
