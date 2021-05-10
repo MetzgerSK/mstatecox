@@ -1605,7 +1605,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 
 		// grab number of tPoints (since we'll be calling it more than once within the for())
 		// ** NOTE: you added in all integer values between stime and tMax_inputted, for output-related reas
-		tptsSet =  range(stime, tMax_inputted, 1)	// ** NOTE: integer values between stime and tMax_inputted only for output-related reasons w/speed + gap + non-integer trans times
+		tptsSet =  range(stime, ceil(tMax_inputted), 1)	// ** NOTE: integer values between stime and tMax_inputted only for output-related reasons w/speed + gap + non-integer trans times
 		nTpts = rows(tptsSet)	
 		
 		// create big matrix for ALL means (running total)
