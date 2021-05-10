@@ -6,7 +6,6 @@
 {viewerjumpto "Stored results" "mstphtest##results"}{...}
 {viewerjumpto "Citation" "mstphtest##cite"}{...}
 {viewerjumpto "References" "mstphtest##references"}{...}
-
 {vieweralsosee "mstatecox Commands: Overview" "help mst"}{...}
 {vieweralsosee "mstutil" "help mstutil"}{...}
 {vieweralsosee "" "--"}{...}
@@ -22,7 +21,7 @@
 {marker syntax}{...}
 {title:Syntax}
 
-{p 4 16 2}
+{p 8 16 2}
 {hi:mstphtest}{cmd:,} [{it:phtest_opts}]
 
 {synoptset 20 tabbed}{...}
@@ -98,8 +97,8 @@ In the presence of a single transition, {cmd:mstphtest, {it:phtest_opts}} is ide
 
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: Matrices}{p_end}
-{synopt:{cmd:phtest_{it:stratumID}}} a matrix for each stratum containing the separate {cmd: estat phtest} results each covariate.  {it:strataID} corresponds to {bf:e(strata)}'s value.{p_end}
-{synopt:{cmd:global_{it:stratumID}}} a matrix for each stratum containing the degrees of freedom, chi2 value, and corresponding p-value for the global test.{p_end}
+{synopt:{cmd:phtest_{it:stratumID}}} for each stratum, a matrix containing the separate {cmd: estat phtest} results each covariate.  {it:stratumID} corresponds to {bf:e(strata)}'s value.{p_end}
+{synopt:{cmd:global_{it:stratumID}}} for each stratum, a matrix containing the degrees of freedom, chi2 value, and corresponding p-value for the global test.{p_end}
 
 
 {marker cite}{...}

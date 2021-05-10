@@ -9,7 +9,7 @@
 	* v2: rewrite to deal with possibility that collapsed covariate effects might exist.
 */
 
-*! Last edited: 04MAY21
+*! Last edited: 10MAY21
 *! Last change: removed code for VCE override.
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
@@ -70,10 +70,14 @@ qui{
 	foreach tr of local transIDs{
 		/* Notice: 	Stata will just drop the irrelevant variables for every transition,
 					which doesn't affect the PH testing									*/
-		noi di _n as gr "Transition " as ye `tr'
+		// Print header info (+ horz line, if anything other than first trans)
+		local xtra = ""
+		if("`tr' `ferest()'"!="`transIDs'")	noi di as gr "{hline}"
+		else	local xtra = "_n" 			// add extra hard return before first transition header
+					
+		noi di `xtra' as gr "> Transition " as ye `tr'
 		qui _rmcoll(`namesB') if(`transVar'==`tr' & `flag19'==1), forcedrop
 			local eqCovars `r(varlist)'
-			
 		
 		if("`eqCovars'"!=""){	
 			tempname skm_bSubset
@@ -106,18 +110,21 @@ qui{
 			if(_rc!=0 & _rc!=2001)	noi di as err "Error in computing PH test (error code " _rc ").  Compute manually to see the specific message."
 		
 			// Store table for r()
-			tempname phtest`tr' global`tr'
+			local trL = strtoname("`tr'")	 // legal version of tr
+			if(`tr'<0)	local trL = "_`trL'" // if it's a negative number, add an extra underscore
+			tempname phtest`trL' global`trL'
 			* covariates
-			matrix `phtest`tr'' = r(phtest)
+			matrix `phtest`trL'' = r(phtest)
 			* global test
-			matrix `global`tr'' = (r(df), r(chi2), r(p))
-			matrix colnames `global`tr'' = df chi2 p
-			matrix rownames `global`tr'' = e(strata)==`tr'
+			matrix `global`trL'' = (r(df), r(chi2), r(p))
+			matrix colnames `global`trL'' = df chi2 p
+			matrix rownames `global`trL'' = e(strata)==`tr'
 		}
 		else{
-			noi di _col(7) in gr "No covariates detected for transition " as ye `tr' as gr "."
+			noi di _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
 		}
-	
+		// if not the last transition, insert blank line between this tr's output and horz line for next
+		if("`ferest()'"!="")	noi di ""
 	}
 	
 	cap drop `flag19'
@@ -130,9 +137,11 @@ qui{
 	
 	// Return table estimates as a series of matrices
 	foreach tr of local transIDs{
+	    local trL = strtoname("`tr'")	 // legal version of tr (will auto-include underscore @ front)
+		if(`tr'<0)	local trL = "_`trL'" // if it's a negative number, add an extra underscore
 	    foreach pref in "phtest" "global"{
-			cap return matrix `pref'_`tr' ``pref'`tr''
-			cap matrix drop ``pref'`tr''
+			cap return matrix `pref'`trL' ``pref'`trL''
+			cap matrix drop ``pref'`trL''
 		}
 	}
 }
