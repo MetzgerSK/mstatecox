@@ -1,5 +1,5 @@
-/*	mstcovar, v1.1	
-	20FEB19 (adding demeaning caps for mstsample)
+/*	mstcovar, v1.11
+	04MAY21 (ability to set log-frailty value)
 	
 	Part of the mstatecox package for Stata.  Permits the user to set which variables
 	are associated with which set of transition-specific covariates.  Also, once
@@ -9,8 +9,8 @@
 	Default value = median (as of 04AUG17).
 */
 
-*! Last edited: 20FEB19 (part of MAR19 update)
-*! Last change: adding demeaning caps for mstsample
+*! Last edited: 04MAY21
+*! Last change: ability to set value for log-frailty
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstcovar
@@ -19,7 +19,8 @@ program define mstcovar
 local noiYN = `c(noisily)'	// Did user specify qui?  (Must do here b/c if you query within the qui block, you'll get 0, every time.)
 
 qui{
-	syntax [varname(default=none)] [if] [in] [, Names(varlist) Value(string) REPlace CLEAR]	
+	
+	syntax [varname(default=none)] [if] [in] [, FRailty Names(varlist) Value(string) REPlace CLEAR]	
 		// Replace: If there's already a list in memory with diff covar names.
 		//			Otherwise, Stata will assume everything's the same.
 		
@@ -29,7 +30,7 @@ qui{
 	local macList: all globals "mstcovar*"
 
 	// ECHO: If there's nothing specified, take it as an echo, and print everything--all covar lists and all values.
-	if("`varlist'`names'`value'`replace'`clear'"==""){
+	if("`varlist'`names'`value'`frailty'`replace'`clear'"==""){
 		if(`noiYN'==1)	noi di _n as gr ">> " as gr "Stored Lists" as gr " <<"
 		
 		* List the lists
@@ -82,6 +83,33 @@ qui{
 	if("`e(from)'"==""){
 		noi di as err "You must run {bf:mstutil} before running {bf:mstcovar}.  Try again."
 		exit 198
+	}
+	
+	// If it's the frailty they've specified, set the value and be done
+	if("`frailty'"!=""){
+		// Make sure the Cox model in memory has a frailty term
+		if("`e(cmd)'"!="stcox_fr"){
+			noi di in gr "(Log-)frailty value specified, but Cox model in memory has no frailty term."
+			exit
+		}
+		// If the user's specified anything else, let them know it'll be ignored
+		if("`varlist'"!=""){
+			noi di as gr ///
+					"{opt:frailty} specified.  Ignoring {bf:`varlist'}--run {cmd:mstcovar} again to set " ///
+					as ye "`varlist'" as gr "'s value."
+		}
+		// Ensure the value the user's entered is a number, not a tabstat statistic.
+		if(real("`value'")==.){
+			noi di as err "Must specify a numerical value in {bf:value()} when {bf:frailty} specified."
+			exit 108
+		}
+		// Set the value of the log-frailty
+		global mstcovar_lFr = `value'
+		if(`noiYN'==1){
+			noi di as gr "Log-frailty set to " as ye `value'
+			noi di as gr "(implies frailty = " as ye %5.4f exp(`value') as gr ")"
+		}
+		exit
 	}
 	
 	// otherwise, there needs to be a master variable in varname.

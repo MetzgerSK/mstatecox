@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 01NOV19 [v3.21]	
-*! Last change: Fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
+*! Last edited: 11MAY21 [v3.3]
+*! Last change: TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -17,7 +17,7 @@
 							whether the msfit matrix should be put into memory and kept, whether _simMstate() should post the stage results (vs. path),
 							the slice trigger value (for processing); whether we're brute forcing fixed horizons; whether mstsample should override
 							the datasig check when generating the Cox quants
-							
+
 	// Output: (potentially) variables containing
 				(1) the t's for the simulation run
 				(2) for every stage, the stage-occupation probabilities at t, averaged across all the simulations
@@ -144,7 +144,7 @@ qui{
 		
 		local origName = "`xvals'"
 			
-		if(colsof(`skm_b')!=0 & `mstcovar'!=0 ){
+		if(colsof(`skm_b')!=0 & `mstcovar'!=0){
 			noi di as err "{bf:stcox} has covariates, but no covariate values in memory.  Use {bf:mstcovar} to set your covariate values and try again."
 			exit 198
 		}	
@@ -387,7 +387,7 @@ qui{
 	{
 	
 	* BASELINE HAZ
-	tempvar test H0
+	tempvar H0
 
 	// In case reestimating's needed.  Just do this once, to reduce code redundancy. 
 	if("`e(method)'"=="breslow")		local tieType = "breslow"
@@ -405,27 +405,64 @@ qui{
 		// manual sample flag (JIC)
 		tempvar flag19
 		gen `flag19' = e(sample)
-			 
+		
+		// Pull any info on frailty term
+		if("`e(shared)'"!=""){
+			local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
+			local reest_tr = ""	// no strata currently possible if frailty term present.
+			* get frailty value
+			local frVal = "$mstcovar_lFr"
+			local frNote = ""
+			if("`frVal'"==""){
+				local frVal = 0	// if no log-frailty given, set to 0
+				local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+			}
+			
+			* populate the shortcut macro with nothing
+			local reest_shtct = ""
+
+			// Give user an apology message
+			noi di _n as ye "> NOTE: " as gr ///
+			  "Your model has a frailty term.  {bf:mstsample} reestimates your model using demeaned covariates to "
+			noi di as gr _col(9) /// 
+			  "obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual quick  "
+			noi di as gr _col(9)  ///   
+			  "shortcut to do this when a frailty term is present--it has to reestimate your entire model.  As a "
+			noi di as gr _col(9)  ///
+			  "result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
+		}
+		else{
+			local reest_fr = ""
+			local reest_tr = "strata(`trans')"
+			local frVal = 0	// nothing to add, if this isn't a frailty model
+			local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
+		}
+				
+		// Get list of TICs for demeaning (needed regardless of whether TVCs present)
+		if(`tvc'==.)	matrix coleq `skm_b' = "main"		// if there are no TVCs, main eq won't have a name.  Fix that.
+		tempname skm_tic
+		matrix `skm_tic' = `skm_b'[1,"main:"]
+		local namesTIC: colnames `skm_tic'
+			
+		// Demean TICs					
+		local ticDemean = ""
+		foreach x of local namesTIC{
+			tempvar `x'Dem
+			covarDemean mstcovarVals_means `x' ``x'Dem' `trans' "`namesB'" "dem"
+			local ticDemean = "`ticDemean' ``x'Dem'"
+		}
+			
+		// REESTMATE
 		if(`tvc'==.){
 			** REESTIMATE WITH DEMEANED		- 20FEB19
 			_estimates hold origCox, restore copy
-			
-			// Demean the TICs
-			matrix coleq `skm_b' = "main"		// if there are no TVCs, main eq won't have a name.  Fix that.
-			tempname skm_tic
-			matrix `skm_tic' = `skm_b'[1,"main:"]
-			local namesTIC: colnames `skm_tic'
-			
-			local ticDemean = ""
-			foreach x of local namesTIC{
-				tempvar `x'Dem
-				covarDemean mstcovarVals_means `x' ``x'Dem' `trans' "`namesB'" "dem"
-				local ticDemean = "`ticDemean' ``x'Dem'"
-			}
-			
+				
 			* REESTM
-			stcox `ticDemean'  if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
-												matfrom(`skm_b') iter(0) norefine		// to speed things along
+			stcox `ticDemean'  if(`flag19'==1), ///
+						`tieType' `reest_tr' `reest_fr' ///
+						offset(`e(offset)') ///
+						vce(`e(vce)' `e(clustvar)') ///
+						`reest_shtct'		// to speed things along
 			
 			* BASELINE HAZARD 
 			qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
@@ -456,28 +493,32 @@ qui{
 				matrix `skm_tvc' = `skm_b'[1,"tvc:"]
 				local namesTVC: colnames `skm_tvc'
 				
-				local tvcStr = ""
+				local tvcStrDemean = ""
 				foreach v of local namesTVC{
+					** demean the TVCs (MAY21)
+					if(regexm("`namesTIC' ", "`v' ")==0){ // Ensure this TVC isn't in the TIC list (is already demeaned, if so).
+						tempvar `v'Dem
+						covarDemean mstcovarVals_means `v' ``v'Dem' `trans' "`namesB'" "dem"	
+					}
+
+					** generate the temp names for interacts using demeaned
 					tempvar `v'TVC
 					
-					gen double ``v'TVC' = `v' * `e(texp)'
-					local tvcStr = "`tvcStr' ``v'TVC'"
+					gen double ``v'TVC' = ``v'Dem' * `e(texp)'
+					local tvcStrDemean = "`tvcStrDemean' ``v'TVC'"
 				}
 				
-				// regress 
-				tempname skm_tic
-				matrix `skm_tic' = `skm_b'[1,"main:"]
-				local namesTIC: colnames `skm_tic'
+				// Reestimate  
+				local texp = "`e(texp)'"  // needed for next segment's xb calcs
 				
-				local texp = "`e(texp)'"
+				stcox `ticDemean' `tvcStrDemean' if(`flag19'==1), ///
+						`tieType' `reest_tr' `reest_fr' ///
+						offset(`e(offset)') ///
+						vce(`e(vce)' `e(clustvar)') ///
+						`reest_shtct' // *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
-				// Have it your way, Stata.  Just reestimate everything, for now.  
-				stcox `namesTIC' `tvcStr' if(`flag19'==1), `tieType' strata(`trans') vce(`e(vce)' `e(clustvar)') ///
-														matfrom(`skm_b') /*iter(0) norefine*/	// *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
-				
-				
-				// Fine.
-				matrix drop `skm_tvc' `skm_tic'
+				// Tidy
+				matrix drop `skm_tvc' 
 				drop `flag19'
 			
 				* BASELINE CHAZ, via hazard components	
@@ -485,30 +526,23 @@ qui{
 				predict double `basehc', basehc
 
 		*********************************************************************************************************************
-			// Need to do linear combo for mstcovar values (and doing it here to make life easier, in the longer run.)
-				// Going to do this here for the TVCs, JIC.
-				// Fill in the variable's value to the dataset for pred.
-				
-				local meanCols: colnames mstcovarVals_means
-				tempname noDemean
-				matrix `noDemean' = J(rowsof(mstcovarVals_means), colsof(mstcovarVals_means), 0)
-				matrix colnames `noDemean' = `meanCols'
+			  // Need to do linear combo for mstcovar values (and doing it here to make life easier, in the longer run.)
 				
 				// Fill TIC first (and since demeaned model is in memory, means you have to fill in the demeaned vars for the prediction.)
 				foreach x of local namesTIC{
-					covarFill `xvals' `noDemean' `x' `trans' "`namesB'"
-					//replace ``x'Dem' = `x'		// Replace the covariate's value into the demeaned variable for the pred.
+					covarFill `xvals' mstcovarVals_means `x' `trans' "`namesB'"
 				}
 				
-				// generate tempvars for all the TVC vars.  
+				// Fill any TVCs not in TIC list next  
 				foreach v of local namesTVC{
 					// Ensure this TVC isn't in the TIC list.
 					if(regexm("`namesTIC' ", "`v' ")==0){
-						covarFill `noDemean' `v' `trans' "`namesB'" 
+						covarFill `xvals' mstcovarVals_means `v' `trans' "`namesB'" 
 					}
-				}	
-				//change this to a predict, now.
-				* TIC (which will always need to run)
+				}
+				
+				// Gen linear combo
+				* TIC 
 				cap drop `xbTIV'
 				tempvar xbTIV
 				matrix sco double `xbTIV' = `skm_b', eq("main") 
@@ -525,7 +559,7 @@ qui{
 				
 				// Get the final prediction for H0.
 				tempvar pieces H
-				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC') 
+				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal') 
 				bysort trans (_t): gen `H' = sum(`pieces')
 				gduplicates drop _t `trans', force
 				keep _t `trans' `H'
@@ -590,11 +624,9 @@ qui{
 	
 	* HR (if semi-par)
 	if(colsof(`skm_b')!=0 & `tvc'==.){        // as of 21APR19, will only be TICs now.
-		// 	02DEC16: covariate value fix
-		
-		local names : colnames `xvals'	// pull the column name for xvals
+		// 02DEC16: covariate value fix
+		local names: colnames `xvals'	// pull the column name for xvals
 		local string = ""
-	
 		
 		// jic
 		preserve	// !! for the xb gen
@@ -604,17 +636,16 @@ qui{
 				covarFill `xvals' mstcovarVals_means `x' `trans' "`namesB'"
 			}
 				
-			//change this to a predict, now.
-			* TIC (which will always need to run)
+			// Generate linear combo
+			* TIC 
 			cap drop `xbTIV'
 			tempvar xbTIV
-			
 			matrix sco double `xbTIV' = `skm_b', eq("main") 
 
-			* combine into the HR.
+			* combine w/frailty (if present) into the HR.
 			cap drop `hr'
 			tempvar hr
-			gen double `hr' = exp(`xbTIV')
+			gen double `hr' = exp(`xbTIV'+`frVal')
 
 			* insert the prediction-to-matrix conversion here before the restore
 			cap drop `hrMat'
@@ -676,11 +707,19 @@ qui{
 		bysort `trans' (_t): gen double `naH' = sum(`intermed')
 		
 		// 21FEB19 mod - keep in H0 form
-		replace `H0' = `naH'
+		replace `H0' = `naH'*exp(`frVal')
 		
 		cap drop `stshaz'
 		cap drop `intermed'
 		cap drop `naH'
+	}
+	else{	// only other possiblity is semi-par w/TVCs
+		// We already calculated the HR for this when reestimated the demeaned 
+		// model.  The temporary interaction terms were already in the dataset 
+		// (and we'd have to regenerate those, if we did the calcs here).
+		//
+		// Ergo, there's nothing we need to do here for a model w/TVCs.  Inserting
+		// this code block here explicitly to prevent future freakouts.
 	}
 		
 	// generate cumulative hazard
@@ -694,7 +733,7 @@ qui{
 	
 
 	// Second, generate the holder variables.  **NOTE: if gen's on at the end, keep them.
-		* These will have one row for every simulation-time pairing.
+	* These will have one row for every simulation-time pairing.
 	local keepHolders = 1
 	if("`gen'"=="")		local keepHolders = 0
 	
@@ -1078,8 +1117,8 @@ qui{
 	}
 	
 	noi di _n as gr "Simulations underway."
-		timer clear 19
-		timer on 19
+		timer clear 76
+		timer on 76
 	
 	mata: resFinal = .
 	mata: resFinalPath = .
@@ -1092,7 +1131,7 @@ qui{
 					"`folderName'", "`fixedhorz'", "`bforce'", `noiYN', "`speed'", `ci', ///
 					resFinal, resFinalPath, "`pathspeed'")
 																			// notice: no longer tMax_inputted, but tmax, where tmax = inputted + 1 (while tshooting the boundary thing)
-		timer off 19
+		timer off 76
 		
 	cap mata: mata drop mstate_intRslts
 	mata: mata rename resFinalPath mstate_intRslts
@@ -1112,17 +1151,14 @@ qui{
 **** // Third, process the results. // ****
 	qui timer list
 	local spc ""
-	if(`r(t19)'>180 | "`speed'"!="")	local spc = "_c"
+	if(`r(t76)'>180 | "`speed'"!="")	local spc = "_c"
 	noi di _n `spc' as gr "Processing results."
-	if(`r(t19)'>180 & "`speed'"=="")	noi di as gr "  (This may take a suspiciously long while because of the number of simulations you ran.  Please hold.)"
+	if(`r(t76)'>180 & "`speed'"=="")	noi di as gr "  (This may take a suspiciously long while because of the number of simulations you ran.  Please hold.)"
 	else if("`speed'"!="")				noi di as gr "  ({bf:speed} option specified.)"
 	{
 	* get the percentiles
 	local low = (100-`ci')/2
 	local high = 100-`low'
-	
-	timer clear 20
-	timer on 20
 		
 		local mataSv = 0					// sticking this here, for now.
 		local pathTrigger = `slicetrigger'	// how many path observations (which will be imperfect, because cannot tell how many path obsvs without opening the dataset.)
@@ -1290,6 +1326,12 @@ qui{
 			if("`bforce'"!="")		local stObsv = `tPoints' - 1
 			noi list ``gen'_Rslt_t' ``gen'_Rslt_stage`s'_m' ``gen'_Rslt_stage`s'_lb' ``gen'_Rslt_stage`s'_ub' in `stObsv'/`tPoints' if(``gen'_Rslt_t'<=`tMax_inputted'), noobs sep(`tPoints') subvar ab(`spacing')
 			
+			// If frailty present, but no value specified, make note about frailty
+			// being set to 0
+			if("`frNote'"!=""){
+				noi di _n as gr "`frNote'"
+				noi di ""
+			}
 			
 			// If the user wants the vars in memory, create them.
 			if(`keepHolders'==1){
@@ -1476,8 +1518,6 @@ qui{
 	}
 	} // end of convenience collapse for result 
 	
-	timer off 20
-	
 	* end of convenience collapse for result chunk
 	mat drop `skm_b'
 	if(`overall'>`slicetrigger' & `mataSv'==0 & `pathTrigger'!=1)	cap qui erase "`jicFile'.dta"
@@ -1567,7 +1607,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 
 		// grab number of tPoints (since we'll be calling it more than once within the for())
 		// ** NOTE: you added in all integer values between stime and tMax_inputted, for output-related reas
-		tptsSet =  range(stime, tMax_inputted, 1)	// ** NOTE: integer values between stime and tMax_inputted only for output-related reasons w/speed + gap + non-integer trans times
+		tptsSet =  range(stime, ceil(tMax_inputted), 1)	// ** NOTE: integer values between stime and tMax_inputted only for output-related reasons w/speed + gap + non-integer trans times
 		nTpts = rows(tptsSet)	
 		
 		// create big matrix for ALL means (running total)
@@ -1580,9 +1620,9 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 		for(stg_i=1;stg_i<=nStgs; stg_i++){		
 			// toss the LB object if name already in memory
 			rmexternal(sprintf("spd_lb%f", stg_i))
-			ptrLB = crexternal(sprintf("spd_lb%f", stg_i))			// creates object named (in Stata code) spd_lb`i'
+			ptrLB = crexternal(sprintf("spd_lb%f", stg_i))	 	// creates object named (in Stata code) spd_lb`i'
 			*ptrLB = J(bktSz,nTpts,0) 							// (size of bucket) x (# of time points)
-					// ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
+				// ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
 		}
 	}
 	
@@ -2369,7 +2409,13 @@ end
 // covarFill: To be called within mstsample, specifically while setting covariate values for the haz gen.
 program covarFill, sortpreserve
 {			
-	args matrix matMeans x trans covarNames // input needs to be the matrix with covariate values AND matrix with the covar means AND the current variable name AND the name of the trans variable (no--not needed AND current trans number)
+	args matrix matMeans x trans covarNames 
+		// matrix:     matrix with covariate values 
+		// matMeans:   matrix with the covar means
+		// x:		   current variable name
+		// trans:      the name of the trans variable
+		// covarNames: string with ALL unique varnames in model, across both main + tvc
+		
 	
 		// pull the covar value
 		tempname vM vS 
@@ -2402,7 +2448,13 @@ end
 // covarDemean: To be called within mstsample, specifically while demeaning the covariates for the stcox reest, to get best poss estimates of H0
 program covarDemean, sortpreserve
 {			
-	args matMeans x newX trans covarNames dirOpt // input needs to be matrix with the covar means AND the current variable name AND the name of the trans variable (no--not needed AND current trans number)
+	args matMeans x newX trans covarNames dirOpt 
+		// matMeans:   matrix with the covar means
+		// x:		   current variable name
+		// newX:	   name for new variable containing the demeaned values
+		// trans:      the name of the trans variable 
+		// covarNames: string with ALL unique varnames in model, across both main + tvc
+		// dirOpt:	   "dem" = demeaning the vars; "rem" = re-meaning (= readding mean)
 		
 		// Demeaning or remeaning?
 		if("`dirOpt'"=="dem")		local dir = -1
