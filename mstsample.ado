@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 04MAY21 [v3.22]
-*! Last change: Incorporated frailty's value into msfit calculations (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
+*! Last edited: 10MAY21 [v3.22]
+*! Last change: Incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2); fixed issue with gap time + non-int fail times for speed option (v3.1); rewrite for H(t) instead of S(t) + demeaning integration from mstutil + speed option (v3).
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -144,7 +144,7 @@ qui{
 		
 		local origName = "`xvals'"
 			
-		if(colsof(`skm_b')!=0 & `mstcovar'!=0 ){
+		if(colsof(`skm_b')!=0 & `mstcovar'!=0){
 			noi di as err "{bf:stcox} has covariates, but no covariate values in memory.  Use {bf:mstcovar} to set your covariate values and try again."
 			exit 198
 		}	
@@ -459,6 +459,7 @@ qui{
 			* REESTM
 			stcox `ticDemean'  if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
+						offset(`e(offset)') ///
 						vce(`e(vce)' `e(clustvar)') ///
 						`reest_shtct'		// to speed things along
 			
@@ -509,6 +510,7 @@ qui{
 				// Have it your way, Stata.  Just reestimate everything, for now.  
 				stcox `namesTIC' `tvcStr' if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
+						offset(`e(offset)') ///
 						vce(`e(vce)' `e(clustvar)') ///
 						`reest_shtct'	// *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 		
@@ -541,7 +543,7 @@ qui{
 				foreach v of local namesTVC{
 					// Ensure this TVC isn't in the TIC list.
 					if(regexm("`namesTIC' ", "`v' ")==0){
-						covarFill `noDemean' `v' `trans' "`namesB'" 
+						covarFill `xvals' `noDemean' `v' `trans' "`namesB'" 
 					}
 				}	
 				//change this to a predict, now.
@@ -628,8 +630,7 @@ qui{
 	* HR (if semi-par)
 	if(colsof(`skm_b')!=0 & `tvc'==.){        // as of 21APR19, will only be TICs now.
 		// 	02DEC16: covariate value fix
-		
-		local names : colnames `xvals'	// pull the column name for xvals
+		local names: colnames `xvals'	// pull the column name for xvals
 		local string = ""
 	
 		
@@ -725,7 +726,7 @@ qui{
 	if(`tvc'==.)    gen double `Haz' = `H0' * `hr'
 	else{		
 		gen double `Haz' = `H'		
-		drop `basehc' `H'		
+		drop `H'		
 	}
 	noi di as gr "." _c			// display message
 	
@@ -1618,9 +1619,9 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 		for(stg_i=1;stg_i<=nStgs; stg_i++){		
 			// toss the LB object if name already in memory
 			rmexternal(sprintf("spd_lb%f", stg_i))
-			ptrLB = crexternal(sprintf("spd_lb%f", stg_i))			// creates object named (in Stata code) spd_lb`i'
+			ptrLB = crexternal(sprintf("spd_lb%f", stg_i))	 	// creates object named (in Stata code) spd_lb`i'
 			*ptrLB = J(bktSz,nTpts,0) 							// (size of bucket) x (# of time points)
-					// ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
+				// ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
 		}
 	}
 	
