@@ -2,7 +2,7 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 11MAY21 [v3.3]
+*! Last edited: 12MAY21 [v3.3]
 *! Last change: TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
@@ -386,6 +386,12 @@ qui{
 	* (moved message to after PH-TVC if/else)
 	{
 	
+	// To start: get number of unique from-to pairs
+	tempvar thePairings
+	gegen `thePairings' = group(`from' `to')
+	qui glevelsof `thePairings', local(fromToPairsList)
+		local fromToPairs: list sizeof fromToPairsList
+		
 	* BASELINE HAZ
 	tempvar H0
 
@@ -448,7 +454,7 @@ qui{
 		local ticDemean = ""
 		foreach x of local namesTIC{
 			tempvar `x'Dem
-			covarDemean mstcovarVals_means `x' ``x'Dem' `trans' "`namesB'" "dem"
+			covarDemean mstcovarVals_means `x' ``x'Dem' `thePairings' "`namesB'" "dem"
 			local ticDemean = "`ticDemean' ``x'Dem'"
 		}
 			
@@ -498,7 +504,7 @@ qui{
 					** demean the TVCs (MAY21)
 					if(regexm("`namesTIC' ", "`v' ")==0){ // Ensure this TVC isn't in the TIC list (is already demeaned, if so).
 						tempvar `v'Dem
-						covarDemean mstcovarVals_means `v' ``v'Dem' `trans' "`namesB'" "dem"	
+						covarDemean mstcovarVals_means `v' ``v'Dem' `thePairings' "`namesB'" "dem"	
 					}
 
 					** generate the temp names for interacts using demeaned
@@ -530,14 +536,14 @@ qui{
 				
 				// Fill TIC first (and since demeaned model is in memory, means you have to fill in the demeaned vars for the prediction.)
 				foreach x of local namesTIC{
-					covarFill `xvals' mstcovarVals_means `x' `trans' "`namesB'"
+					covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
 				}
 				
 				// Fill any TVCs not in TIC list next  
 				foreach v of local namesTVC{
 					// Ensure this TVC isn't in the TIC list.
 					if(regexm("`namesTIC' ", "`v' ")==0){
-						covarFill `xvals' mstcovarVals_means `v' `trans' "`namesB'" 
+						covarFill `xvals' mstcovarVals_means `v' `thePairings' "`namesB'" 
 					}
 				}
 				
@@ -555,22 +561,22 @@ qui{
 					replace `xbTVC' = `xbTVC' * `texp'
 				
 				tempfile stuff
-				gcollapse (mean) `basehc' `xbTIV' `xbTVC', by(_t `trans')
+				gcollapse (mean) `basehc' `xbTIV' `xbTVC', by(_t `from' `to')
 				
 				// Get the final prediction for H0.
 				tempvar pieces H
 				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal') 
-				bysort trans (_t): gen `H' = sum(`pieces')
-				gduplicates drop _t `trans', force
-				keep _t `trans' `H'
+				bysort `from' `to' (_t): gen `H' = sum(`pieces')
+				gduplicates drop _t `from' `to', force
+				keep _t `from' `to' `H'
 				save `stuff', replace	
 				local mrgSize = `c(N)'			
 			restore		
 
 			// Merge cHaz back in
 			tempvar merge
-			if(`mrgSize' < 100000)	merge _t `trans' using `stuff', sort uniqusing nokeep _merge(`merge')
-			else					join * , from(`stuff') by(_t `trans') keep(1 3) generate(`merge')			// on the off chance this helps save time
+			if(`mrgSize' < 100000)	merge _t `from' `to' using `stuff', sort uniqusing nokeep _merge(`merge')
+			else					join * , from(`stuff') by(_t `from' `to') keep(1 3) generate(`merge')			// on the off chance this helps save time
 			drop `merge'
 			
 			
@@ -695,14 +701,14 @@ qui{
 		tempvar hr
 		gen `hr' = 1
 		
-		tempvar stshaz naH
+		tempvar stshaz 
 		
 		// get basic haz, defined as # fails/# at risk
-		sts gen `stshaz' = h, by(`trans')
+		sts gen `stshaz' = h, by(`trans')	// needs to stay trans--represents the strata of interest
 		recode `stshaz' (.=0)
 		
 		// get Nelson-Aalen
-		tempvar intermed
+		tempvar intermed naH
 		bysort `trans' _t  : gen double `intermed' = `stshaz' if(_n==1)
 		bysort `trans' (_t): gen double `naH' = sum(`intermed')
 		
@@ -813,12 +819,7 @@ qui{
 	// Last preparation step.  Need h(t) and H(t) for every t, regardless of obsv. fail time.
 	* So, generate one more set of variables containing from, to, haz, and Haz
 	tempvar refT refTrans refFrom refTo refFrTo refhaz refSurv refHaz
-	
-	// FIRST: get number of unique from-to pairs
-	tempvar thePairings
-	gegen `thePairings' = group(`from' `to')
-	qui glevelsof `thePairings', local(fromToPairsList)
-		local fromToPairs: list sizeof fromToPairsList
+
 	
 	// getting some basics to expand dataset's observations, jic (though this seems dangerous)		** 	CONSIDER CHANGING
 	//																									Maybe do it based on number of unique failure times?		
@@ -2409,11 +2410,11 @@ end
 // covarFill: To be called within mstsample, specifically while setting covariate values for the haz gen.
 program covarFill, sortpreserve
 {			
-	args matrix matMeans x trans covarNames 
+	args matrix matMeans x pairings covarNames 
 		// matrix:     matrix with covariate values 
 		// matMeans:   matrix with the covar means
 		// x:		   current variable name
-		// trans:      the name of the trans variable
+		// pairings:   the name of the variable w/unique IDs for from-to pairs
 		// covarNames: string with ALL unique varnames in model, across both main + tvc
 		
 	
@@ -2427,18 +2428,18 @@ program covarFill, sortpreserve
 		matrix `vM_mn' = `matMeans'[1,colnumb(`matMeans',"`x'")]
 		local `vS_mn' =  `vM_mn'[1,1]
 		
-		// go through every transition and fill
-		qui glevelsof `trans', local(trNos)
+		// go through every from-to combo and fill
+		qui glevelsof `pairings', local(trNos)	// (will be filled with from-to pairs, which will = trNos if nothing's collapsed)
 		foreach tr of local trNos{
-			qui _rmcoll(`covarNames') if(`trans'==`tr'), forcedrop
+			qui _rmcoll(`covarNames') if(`pairings'==`tr'), forcedrop
 			local covars_tr`tr' `r(varlist)'
 		
 			if(regexm("`covars_tr`tr'' ", "`x' ")){
-				replace `x' = ``vS'' - ``vS_mn'' if(`trans'==`tr')
+				replace `x' = ``vS'' - ``vS_mn'' if(`pairings'==`tr')
 			}
 			// no: leave equal to 0
 			else{
-				replace `x' = 0 if(`trans'==`tr')
+				replace `x' = 0 if(`pairings'==`tr')
 			}
 		}
 		
@@ -2448,11 +2449,11 @@ end
 // covarDemean: To be called within mstsample, specifically while demeaning the covariates for the stcox reest, to get best poss estimates of H0
 program covarDemean, sortpreserve
 {			
-	args matMeans x newX trans covarNames dirOpt 
+	args matMeans x newX pairings covarNames dirOpt 
 		// matMeans:   matrix with the covar means
 		// x:		   current variable name
 		// newX:	   name for new variable containing the demeaned values
-		// trans:      the name of the trans variable 
+		// pairings:   the name of the variable w/unique IDs for from-to pairs
 		// covarNames: string with ALL unique varnames in model, across both main + tvc
 		// dirOpt:	   "dem" = demeaning the vars; "rem" = re-meaning (= readding mean)
 		
@@ -2470,14 +2471,14 @@ program covarDemean, sortpreserve
 		local `vS_mn' =  `vM_mn'[1,1]
 		
 		// go through every transition and fill		
-		qui glevelsof `trans', local(trNos)			
+		qui glevelsof `pairings', local(trNos)			
 		foreach tr of local trNos{					
-			qui _rmcoll(`covarNames') if(`trans'==`tr'), forcedrop
+			qui _rmcoll(`covarNames') if(`pairings'==`tr'), forcedrop
 			local covars_tr`tr' `r(varlist)'
 		
 			if(regexm("`covars_tr`tr'' ", "`x' ")){
-				cap gen double `newX' = `x' + `dir'*``vS_mn'' if(`trans'==`tr')		// if dir is -1, will subtract mean.  If dir is +1, will add mean.
-				if(_rc!=0)	replace `newX' = `x' + `dir'*``vS_mn'' if(`trans'==`tr')
+				cap gen double `newX' = `x' + `dir'*``vS_mn'' if(`pairings'==`tr')		// if dir is -1, will subtract mean.  If dir is +1, will add mean.
+				if(_rc!=0)	replace `newX' = `x' + `dir'*``vS_mn'' if(`pairings'==`tr')
 				recode `newX' (.=0)		// for the other transitions
 			}
 		}
