@@ -158,6 +158,18 @@ You may want to override an existing list if you previously entered the list inc
 {phang2}{cmd:. mstcovar}{p_end}
 
 
+{pstd}Single duration data - Semi-parametric with frailty{p_end}
+{p 6 6 2}{it:Set age to 25, female to its median, and the log-frailty to 0.1.}{p_end}
+{phang2}{cmd:. webuse catheter}{p_end}
+{phang2}{cmd:. stset time, fail(infect)}{p_end}
+{phang2}{cmd:. stcox age female, efron shared(patient)}{p_end}
+{phang2}{cmd:. mstutil, sdur}{p_end}
+{phang2}{cmd:. mstcovar, clear}{p_end}
+{phang2}{cmd:. mstcovar age, v(25)}{p_end}
+{phang2}{cmd:. mstcovar female, v(p50)}{p_end}
+{phang2}{cmd:. mstcovar, v(0.1) frailty}{p_end}
+{phang2}{cmd:. mstcovar}{p_end}
+
 {marker results}{...}
 {title:Stored Results}
 
