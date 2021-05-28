@@ -11,5 +11,5 @@
 {title:Description}
 
 {pstd}
-See {bf:{help mst:mst}} for overview.
+See {helpb mst} for overview.
 {p_end}

@@ -49,7 +49,7 @@
 {synoptline}
 
 {p 4 6 2}
-Must first run {bf:{help mstutil}, draw({it:transVarName}) from({it:varname}) to({it:varname})} before running {bf:mstdraw}.  Cannot specify {bf:transinfo} and {bf:prgraph} simultaneously.  
+Must first run {helpb mstutil}, draw({it:transVarName}) from({it:varname}) to({it:varname})} before running {bf:mstdraw}.  Cannot specify {bf:transinfo} and {bf:prgraph} simultaneously.  
 For {bf:prgraph}, cannot specify {bf:id} and {bf:sort} simultaneously.{p_end}
 
 {p 4 6 2}

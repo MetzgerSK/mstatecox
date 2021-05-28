@@ -28,12 +28,12 @@
 {synoptset 20 tabbed}{...}
 {synopthdr}
 {synoptline}
-{synopt :{opt tvc(varlist)}}required, list of time-varying covariates, identical in syntax to {bf:{help stcox:stcox, tvc()}}{p_end}
-{synopt :{opt texp(exp)}}required, multiplier for time-varying covariates, identical in syntax to {bf:{help stcox:stcox, texp()}}{p_end}
+{synopt :{opt tvc(varlist)}}required, list of time-varying covariates, identical in syntax to {helpb stcox:stcox, tvc()}{p_end}
+{synopt :{opt texp(exp)}}required, multiplier for time-varying covariates, identical in syntax to {helpb stcox:stcox, texp()}{p_end}
 {synoptline}
 
 {p 4 6 2}
-Must first estimate {help stcox} before running {bf:msttvc}.  All interactions associated with time-varying covariates must be listed together at the end of stcox's covariate list.
+Must first estimate {helpb stcox} before running {bf:msttvc}.  All interactions associated with time-varying covariates must be listed together at the end of stcox's covariate list.
 {p_end}
 
 
@@ -50,7 +50,7 @@ This command provides a way to manually estimate the exact same model specificat
 {pmore}(a) {cmd:stcox} is taking a while to run with {bf:tvc()}/{bf:texp()} specified; and{p_end}
 {p 8 12 2}(b) you are adept with Cox models, and understand how to {bf:stsplit} data and generate the subsequent interaction terms properly (see Jin and Boehmke 2017).{p_end}
 
-{pstd}To use: {bf:{help stsplit}} the data, manually generate any interactions for time-varying covariates, and then run {cmd:stcox} and include these interactions as regressors at the list's end.
+{pstd}To use: {helpb stsplit} the data, manually generate any interactions for time-varying covariates, and then run {cmd:stcox} and include these interactions as regressors at the list's end.
 Importantly, **do not include** {bf:tvc()} and {bf:texp()} with the {bf:stcox}, since you have generated and included the time-varying covariates manually.
 What you {it:would} have typed for {cmd:stcox}'s {bf:tvc()} and {bf:texp()} is what {bf:msttvc} is expecting in its identically named {bf:tvc()} and {bf:texp()} options.{p_end}
 

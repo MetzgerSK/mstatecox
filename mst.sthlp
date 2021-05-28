@@ -1,10 +1,11 @@
 {smcl}
-{* *! version 21feb2019}{...}
+{* *! version 11may2011}{...}
 {viewerjumpto "Description" "mst##description"}{...}
 {viewerjumpto "System Requirements" "mst##prereq"}{...}
 {viewerjumpto "Background Reading" "mst##toread"}{...}
 {viewerjumpto "List of Commands" "mst##alpha"}{...}
 {viewerjumpto "Steps" "mst##howto"}{...}
+{viewerjumpto "Package Updates" "mst##updates"}{...}
 {viewerjumpto "Citation" "mst##cite"}{...}
 {viewerjumpto "References" "mst##reference"}{...}
 
@@ -70,7 +71,7 @@ You must also install three additional packages for {cmd:mstsample} to work.
  
 {pstd}
 Finally, if possible, we recommend you set your present working directory to one where Stata has permission to save files.  
-For why, see {bf:{help mstsample##trigger:mstsample}} (specifically, {bf:slicetrigger}'s remarks).
+For why, see {helpb mstsample##trigger:mstsample} (specifically, {bf:slicetrigger}'s remarks).
 {p_end}
 
 
@@ -97,17 +98,17 @@ and Metzger (2018, Supplemental Appendix A) and de Wreede, Fiocco, and Putter (2
 {title:Commands (Alphabetical)}
 
 {p2colset 4 15 29 2}{...}
-{p2col :{bf:{help mstcovar}}}Sets covariate values before simulating transition probabilities{p_end}
+{p2col :{helpb mstcovar}}Sets covariate values before simulating transition probabilities{p_end}
 
-{p2col :{bf:{help mstdraw}}}Descriptive utility command; provides transition information and can graph transition probability results{p_end}
+{p2col :{helpb mstdraw}}Descriptive utility command; provides transition information and can graph transition probability results{p_end}
 
-{p2col :{bf:{help mstphtest}}}A convenience wrapper to run tests for proportional hazard assumption violations{p_end}
+{p2col :{helpb mstphtest}}A convenience wrapper to run tests for proportional hazard assumption violations{p_end}
 
-{p2col :{bf:{help mstsample}}}Generates transition probabilities via simulation{p_end}
+{p2col :{helpb mstsample}}Generates transition probabilities via simulation{p_end}
 
-{p2col :{bf:{help msttvc}}}For advanced users only; manually declares time-varying covariates in an estimated Cox model{p_end}
+{p2col :{helpb msttvc}}For advanced users only; manually declares time-varying covariates in an estimated Cox model{p_end}
 
-{p2col :{bf:{help mstutil}}}Declares the data to be structured for multi-state duration analysis{p_end}
+{p2col :{helpb mstutil}}Declares the data to be structured for multi-state duration analysis{p_end}
 {p2colreset}{...}
 
 
@@ -126,27 +127,37 @@ To estimate and generate predicted quantities from the model, you would:{p_end}
 
 {p 3}---------(our commands/help files step in here)---------{p_end}
 
-{p 6 12 2} 3.5.) Optional: For advanced users; use {bf:{help msttvc}} to tell the other {cmd:mst} commands TVCs are present, if TVCs not declared with {cmd:stcox}.
+{p 6 12 2} 3.5.) Optional: For advanced users; use {helpb msttvc} to tell the other {cmd:mst} commands TVCs are present, if TVCs not declared with {cmd:stcox}.
 
-{p 8 12 2} 4.) {bf:{help mstutil}} the data.  This declares the data structure as multi-state duration for all other {cmd:mst} commands.{p_end}
+{p 8 12 2} 4.) {helpb mstutil} the data.  This declares the data structure as multi-state duration for all other {cmd:mst} commands.{p_end}
 
-{p 8 12 2} 5.) When covariates are present, use {bf:{help mstphtest}} to check for proportional hazards violations and implement appropriate corrections.{p_end}
+{p 8 12 2} 5.) When covariates are present, use {helpb mstphtest} to check for proportional hazards violations and implement appropriate corrections.{p_end}
 
 {p 9 8 2} <<repeat Steps 3-5 after implementing any PH corrections>>{p_end}
 
-{p 8 12 2} 6.) When covariates are present, use {bf:{help mstcovar}} to assign covariate values for the transition probability simulations.{p_end}
+{p 8 12 2} 6.) When covariates are present, use {helpb mstcovar} to assign covariate values for the transition probability simulations.{p_end}
 
-{p 8 12 2} 7.) Use {bf:{help mstsample}} to generate transition probabilities.{p_end}
+{p 8 12 2} 7.) Use {helpb mstsample} to generate transition probabilities.{p_end}
 
 
 {pstd}
-{bf:{help mstdraw}} is a utility command.  It is not required in any way to successfully estimate the transition probabilities.  It has two abilities:{p_end}
+{helpb mstdraw} is a utility command.  It is not required in any way to successfully estimate the transition probabilities.  It has two abilities:{p_end}
 
-{p 8 12 2} 1.) After you {bf:{help stcox}} and {bf:{help mstutil}} the data, it can tell you about the various transitions in your model.
+{p 8 12 2} 1.) After you {helpb stcox} and {helpb mstutil} the data, it can tell you about the various transitions in your model.
 If we inserted it above, it would be an optional Step 4.5.{p_end}
 
-{p 8 12 2} 2.) It can provide a stacked transition probability plot after you run {bf:{help mstsample}}, 
-provided you save the results to the dataset.  Here, {bf:{help mstdraw}} is an optional Step 7.5{p_end}
+{p 8 12 2} 2.) It can provide a stacked transition probability plot after you run {helpb mstsample}, 
+provided you save the results to the dataset.  Here, {helpb mstdraw} is an optional Step 7.5{p_end}
+
+
+{marker updates}{...}
+{title:Package Updates}
+
+{pstd}In between official {it:Stata Journal} releases, you can find updates on GitHub:
+
+{pmore}{browse "http://www.github.com/MetzgerSK/mstatecox"}{p_end}
+
+{pstd}The GitHub repo's readme contains installation instructions.{p_end}
 
 
 {marker cite}{...}
@@ -155,6 +166,7 @@ provided you save the results to the dataset.  Here, {bf:{help mstdraw}} is an o
 {pstd}Users interested in citing this package should list the following source:{p_end}
 
 {pmore}Metzger, Shawna K., and Benjamin T. Jones.  2018.  "mstatecox: A Package for Simulating Transition Probabilities from Semiparametric Multistate Survival Models."  {it:Stata Journal} 18 (3): 533–563.{p_end}
+
 
 {marker references}{...}
 {title:References}
@@ -188,7 +200,7 @@ provided you save the results to the dataset.  Here, {bf:{help mstdraw}} is an o
 
 {p 4 4 2}
 Shawna K. Metzger{break}
-College of William & Mary{break}
+University of Virginia{break}
 shawna@shawnakmetzger.com
 {p_end}
 
@@ -200,5 +212,5 @@ btjones1@olemiss.edu
 
 
 {p 0 0 0}
-{bf:Last Updated} - 21FEB2019
+{bf:Last Updated} - 11MAY21
 {p_end}
