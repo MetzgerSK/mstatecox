@@ -2,7 +2,7 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 12MAY21 [v3.3]
+*! Last edited: 20JUN21 [v3.3]
 *! Last change: TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
@@ -36,7 +36,11 @@ qui{
 	syntax , SStage(integer) STime(integer)  [N(integer 10) SIMS(integer 1) TMax(integer 0) ///
 											  GEN(string) CI(integer 95) GAP HAZOVerride ///
 											  PATH(string) TERse VERbose MSFIT SLICEtrigger(integer 250000000) ///
-											  SPEED DIR(string)  ]
+											  SPEED DIR(string) SEYes]
+                                              
+        // Note: seyes = the coefficient SEs are relevant.  This is looking ahead to some 
+        //               future potential functionality.  Specifying it now will do nothing,
+        //               because the SEs aren't involved in the default trPr uncertainty calc.                                      
 	
 	** Check to make sure data have been mstutil'd
 	if("`e(from)'"==""){
@@ -414,28 +418,48 @@ qui{
 		
 		// Pull any info on frailty term
 		if("`e(shared)'"!=""){
-			local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
+			// * Do it the fast way via offset
+            if("`seyes'"==""){
+                tempvar reestOffset
+                predict double `reestOffset', effects                 
+                    // In case there's already an offset variable
+                    if("`e(offset)'"!="")      replace `reestOffset' = `reestOffset' + `e(offset)'
+                
+                * frailty/offset opts
+                local reest_fr = ""
+                local reest_off = "`reestOffset'"
+                * populate shortcut macro
+                local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
+            }
+            // * Do it the long way and reestimate
+            else{
+            	* frailty/offset opts
+                local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
+                local reest_off = "`e(offset)'"
+                * populate the shortcut macro with nothing
+                local reest_shtct = ""
+            }
 			local reest_tr = ""	// no strata currently possible if frailty term present.
-			* get frailty value
+			
+            * get frailty value
 			local frVal = "$mstcovar_lFr"
 			local frNote = ""
 			if("`frVal'"==""){
 				local frVal = 0	// if no log-frailty given, set to 0
 				local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
 			}
-			
-			* populate the shortcut macro with nothing
-			local reest_shtct = ""
 
-			// Give user an apology message
-			noi di _n as ye "> NOTE: " as gr ///
-			  "Your model has a frailty term.  {bf:mstsample} reestimates your model using demeaned covariates to "
-			noi di as gr _col(9) /// 
-			  "obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual quick  "
-			noi di as gr _col(9)  ///   
-			  "shortcut to do this when a frailty term is present--it has to reestimate your entire model.  As a "
-			noi di as gr _col(9)  ///
-			  "result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
+            // If we're doing it the long way, give user an apology message
+            if("`seyes'"!=""){
+                noi di _n as ye "> NOTE: " as gr ///
+                  "Your model has a frailty term and you have specified the {bf:seyes} option.  {bf:mstsample} reestimates your model using "
+                noi di as gr _col(9) /// 
+                  "demeaned covariates to obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual "
+                noi di as gr _col(9)  ///   
+                  "quick shortcut to do this when a frailty term and {bf:seyes} are both present--it has to reestimate your entire model."
+                noi di as gr _col(9)  ///
+                  "As a result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
+            }
 		}
 		else{
 			local reest_fr = ""
@@ -466,7 +490,7 @@ qui{
 			* REESTM
 			stcox `ticDemean'  if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
-						offset(`e(offset)') ///
+						offset(`reest_off') ///
 						vce(`e(vce)' `e(clustvar)') ///
 						`reest_shtct'		// to speed things along
 			
@@ -519,7 +543,7 @@ qui{
 				
 				stcox `ticDemean' `tvcStrDemean' if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
-						offset(`e(offset)') ///
+						offset(`reest_off') ///
 						vce(`e(vce)' `e(clustvar)') ///
 						`reest_shtct' // *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
