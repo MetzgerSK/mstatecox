@@ -416,9 +416,13 @@ qui{
 		tempvar flag19
 		gen `flag19' = e(sample)
 		
+        // Pull info on noadj, since no other way to recover
+        tokenize "`e(cmdline)'", parse(",")
+        local noadj  = cond(regexm("`3'", "noadj[a-z]*"), "noadjust", "")
+        
 		// Pull any info on frailty term
 		if("`e(shared)'"!=""){
-			// * Do it the fast way via offset
+            // * Do it the fast way via offset
             if("`seyes'"==""){
                 tempvar reestOffset
                 predict double `reestOffset', effects                 
@@ -491,7 +495,7 @@ qui{
 			stcox `ticDemean'  if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
 						offset(`reest_off') ///
-						vce(`e(vce)' `e(clustvar)') ///
+						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct'		// to speed things along
 			
 			* BASELINE HAZARD 
@@ -544,7 +548,7 @@ qui{
 				stcox `ticDemean' `tvcStrDemean' if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
 						offset(`reest_off') ///
-						vce(`e(vce)' `e(clustvar)') ///
+						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct' // *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
 				// Tidy
