@@ -5,12 +5,13 @@
 	
 	Requires that stcox is run first, then mstutil.
 	
-	* v2.1: removed code for VCE override
+	* v2.2: added offset, added noadj, added frailty warning msg
+    * v2.1: removed code for VCE override
 	* v2: rewrite to deal with possibility that collapsed covariate effects might exist.
 */
 
-*! Last edited: 10MAY21
-*! Last change: removed code for VCE override.
+*! Last edited: 20JUN21
+*! Last change: offset readded, noadj added, msg about frailties to prevent future panic, removed code for VCE override.
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstphtest
@@ -33,7 +34,20 @@ qui{
 		noi di as err "You must run {bf:mstutil} before running {bf:mstphtest}.  Try again."
 		exit 198
 	}
-
+		
+	// If detail not present as an option, add it.
+	if(!regexm("`options'", "d[a-z]*"))	local options = "`options' detail"
+    
+    ** If there's a frailty variable, that means there can't currently be a strata
+    ** variable.  Flag that for the user (and our future selves), kick everything
+    ** to the regular estat phtest routine.
+    if("`e(shared)'"!=""){
+    	noi di as gr "No {bf:strata()} variable present due to presence of {bf:shared()}.  Stata does not currently permit both in the same model."
+        noi di as gr _n "Shifting to regular {bf:estat phtest} routine: "
+        cap noi estat phtest, `options'
+        exit
+    }
+    
 	// Housekeep - get sample flag, covariate list, store trans name
 	tempvar flag19
 	gen `flag19' = e(sample)
@@ -53,9 +67,7 @@ qui{
 	}
 	
 	local transVar `e(trans)'
-		
-	// If detail not present as an option, add it.
-	if(!regexm("`options'", "d[a-z]*"))	local options = "`options' detail"
+
 	
 	// Get the varlist for each strata
 	qui levelsof `transVar', local(transIDs)
@@ -66,7 +78,10 @@ qui{
 	local ties 	 = "`e(ties)'"
 	local vce 	 = "`e(vce)'"
 	local vceVar = "`e(clustvar)'"	// if there's a clustering variable.
-	
+	* for noadjust option, since no other way to recover
+    tokenize "`e(cmdline)'", parse(",")
+	local noadj  = cond(regexm("`3'", "noadj[a-z]*"), "noadjust", "")
+    
 	foreach tr of local transIDs{
 		/* Notice: 	Stata will just drop the irrelevant variables for every transition,
 					which doesn't affect the PH testing									*/
@@ -94,12 +109,19 @@ qui{
 			mat rown `skm_bSubset' = "y1"
 
 			if("`ties'"=="none")	local ties = ""		// to prevent "option none not allowed" error
-			
-			// The 12SEP17 fix.
+            
+			// Reestimate
 			qui stcox `eqCovars' if(`transVar'==`tr' & `flag19'==1), 	///
 					`ties' vce(`vce' `vceVar') nohr estimate ///
+                    offset(`e(offset)') `noadj' ///
 					matfrom(`skm_bSubset') iter(0) norefine		//<- the key part.  Reestimate using the overall model as your bHats, and don't maximize, at all. 			
 			
+                // NOTE: there's no frailty adjustment here because Stata currently
+                // forbids the estimation of a frailty model with strata.  If that
+                // changes in the future, this code will need to change.  There's
+                // now a message that gets printed to the user about this in the 
+                // housekeeping section.
+                
 			cap qui estat phtest, `options'
 			
 			// If no error, say loudly
