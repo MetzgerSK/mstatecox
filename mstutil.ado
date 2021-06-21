@@ -3,7 +3,7 @@
 // ** part of mstatecox package
 // ** see "help mst" for details
 
-*! 01MAR19
+*! 21JUN21
 	
 cap program drop mstutil
 program define mstutil, eclass
@@ -73,6 +73,15 @@ qui{
 		exit 198
 	}
 	
+    // See if model has both frailties and strata.  If so, exit out, for now.  
+    ** (Everything written here presumes the long-time Stata behavior of not 
+    ** permitting both.  (Won't be hard to update, if this rule ever gets 
+    ** relaxed, but will simply need to BE updated.))
+    if("`e(strata)'"!="" & "`e(shared)'"!=""){
+        noi di as red "{bf:shared()} and {bf:strata()} both present in {bf:stcox}.  Traditionally, this has been impossible in Stata.  {bf:mstatecox} will require an update to accommodate the change."
+        exit 198
+    }
+    
 	// If sdur isn't specified, then from and to need to be.  Shout at the user.
 	if("`sdur'"=="" & ("`from'"=="" | "`to'"=="")){
 		noi di as err "You must either (1) specify variables containing both the from and to stages or (2) declare your data to contain a single transition only.  Try again."
