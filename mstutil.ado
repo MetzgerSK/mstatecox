@@ -132,9 +132,9 @@ qui{
 			local internal trans__ms
 		}
 		else{
-			if("`e(strata)'"!="")	local desc = "estimated stcox with a strata variable"
-			if("`draw'"=="")	local desc = "estimated stcox with a strata variable"
-			di as gr "You specified {bf:sdur} for a single transition, but you .  Transition variable set to " as ye "`e(strata)'" as gr "."
+			noi di as gr _c "You specified {bf:sdur} for a single transition, but you "
+            if("`e(strata)'"!="")	noi di as gr "estimated stcox with a strata variable.  Transition variable set to " as ye "`e(strata)'" as gr "."
+			if("`draw'"!="")	    noi di as gr "specified the {bf:draw} option.  Ignoring {bf:sdur}."
 		}
 		
 		// also generate fake from and to stage variables for the user
