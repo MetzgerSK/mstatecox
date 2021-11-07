@@ -21,10 +21,10 @@ github install MetzgerSK/mstatecox
 You can also install specific versions of `mstatecox` using `github`'s `version()` option.
 
 ### Official
-We consider official `mstatecox` releases to be those disseminated via _Stata Journal_.  The most recent official release was in spring 2019.  To install it:
+We consider official `mstatecox` releases to be those disseminated via _Stata Journal_.  The most recent official release was in spring 2021.  To install it:
 
 ```stata
-net sj 19-3 st0534_1
+net sj 21-3 st0534_2
 ```
 The commits corresponding to the official releases are also tagged appropriately using GitHub's release log functionality.
 
