@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 21FEB19 (part of MAR19 update)
-*! Last change: tweaked order of opening messages so that errors came first, then FYIs
+*! Last edited: 02JUN22
+*! Last change: minor display tweak for ", trans"
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstdraw	
@@ -162,7 +162,7 @@ qui{
 			order trName, last
 			
 		noi di _n as ye "<<SUMMARY LIST>>"
-		noi list * in 1/`counter', noobs sepby(from) //16DEC18 addition - the noi.  Wasn't printing, otherwise.  And how this wasn't a problem before now, who knows.
+		noi list * in 1/`counter', noobs sepby(from) table //16DEC18 addition - the noi.  Wasn't printing, otherwise.  And how this wasn't a problem before now, who knows.
 		
 		// Display the matrix
 			// ...after you fill in the column name for the matrix
