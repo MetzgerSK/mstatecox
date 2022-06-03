@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 20JUN21 [v3.3]
-*! Last change: TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
+*! Last edited: 01JUN22 [v3.331]
+*! Last change: fixes NP estm (v3.331); TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -70,6 +70,7 @@ qui{
 	tempname skm_b
 	matrix `skm_b' = e(b)
 	
+    ** Make sure user didn't specify a non-parametric model
 	** If fixed horizon specified, make sure the user understands what that means
 	if("`fixedhorz'"!=""){
 		noi di _n as ye 	" NOTE: " as gr "You have specified the {bf:fixedhorz} option.  Your simulations will start"
@@ -405,6 +406,18 @@ qui{
 	else if("`e(method)'"=="partial")	local tieType = "exactp"
 	else if("`e(method)'"=="marginal")	local tieType = "exactm"
 	
+    // Get frailty value
+    if("`e(shared)'"!=""){
+        local frVal = "$mstcovar_lFr"
+        local frNote = ""
+        if("`frVal'"==""){
+            local frVal = 0	// if no log-frailty given, set to 0
+            local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+        }
+    }
+    // If no frailty, frVal=0
+    else    local frVal = 0   
+            
 	// NON-PARAMETRIC 
 	if(colsof(`skm_b')==0){
 		* BASELINE HAZARD 
