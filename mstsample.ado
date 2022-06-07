@@ -36,12 +36,15 @@ qui{
 	syntax , SStage(integer) STime(integer)  [N(integer 10) SIMS(integer 1) TMax(integer 0) ///
 											  GEN(string) CI(integer 95) GAP HAZOVerride ///
 											  PATH(string) TERse VERbose MSFIT SLICEtrigger(integer 250000000) ///
-											  SPEED DIR(string) SEYes]
+											  SPEED DIR(string) SEYes ///
+                                              DEM_debug]
                                               
         // Note: seyes = the coefficient SEs are relevant.  This is looking ahead to some 
         //               future potential functionality.  Specifying it now will do nothing,
         //               because the SEs aren't involved in the default trPr uncertainty calc.                                      
 	
+        // dem_debug: for the unit tests involving the demeaned Cox model
+    
 	** Check to make sure data have been mstutil'd
 	if("`e(from)'"==""){
 		noi di as err "You must run {bf:mstutil} before running {bf:mstsample}."
@@ -511,6 +514,9 @@ qui{
 						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct'		// to speed things along
 			
+            * (save to Stata memory, if running unit tests)
+            if("`dem_debug'"!="")   est store mst_demCox
+                
 			* BASELINE HAZARD 
 			qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
 			
@@ -564,6 +570,9 @@ qui{
 						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct' // *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
+                * (save to Stata memory, if running unit tests)
+                if("`dem_debug'"!="")   est store mst_demCox
+                
 				// Tidy
 				matrix drop `skm_tvc' 
 				drop `flag19'
@@ -883,8 +892,8 @@ qui{
 			drop `HazMax'		
 
 		// Toss as needed to get unique list
-		keep if(`failTPt'==1 | _t==`tMax_inputted')					// keep t's where failures occur OR tmax (27FEB19)
-		drop if(`trFailTime'==1 & _d==0)		// toss observations where this transition has a failure time at this t, but this particular observation isn't the failure one
+		keep if(`failTPt'==1 | _t==`tMax_inputted')		// keep t's where failures occur OR tmax (27FEB19)
+		drop if(`trFailTime'==1 & _d==0)		        // toss observations where this transition has a failure time at this t, but this particular observation isn't the failure one
 		gduplicates drop _t `thePairings', force		// toss all the other duplicates, now that we've whittled
 		
 		// If the time point isn't a failure time for *this* transition, wipe the surv and refill.  (Because the surv shouldn't vary in between.)
@@ -2257,7 +2266,7 @@ mata:
 	real colvector cumprod(real colvector x)
 	{
 		real colvector ub
-		real scalar i
+        real scalar i
 		real scalar xRow
 		
 		ub = J(rows(x),1,0)		// create empty vector that's as long as what you passed in.
