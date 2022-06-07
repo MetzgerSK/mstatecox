@@ -2274,13 +2274,11 @@ mata:
 		ub = 1 \ ub				// append a one at the front to make the first obsv. behave
 		
 		xRow = rows(x) // for speed gains, given how Mata compiler works
-		for (i=2;i<=xRow;i++){  
-			ub[i] = x[i] * ub[i-1]
+		for (i=1;i<=xRow;i++){  
+			ub[i+1] = x[i] * ub[i]
 		}
-		// then, for the last element
-		ub[length(ub)] = x[length(ub)-1] * x[length(ub)-1]
 			
-		ub = ub[1..length(ub)-1]
+		ub = ub[2..length(ub)]
 		return(ub)
 	}
 end
