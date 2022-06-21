@@ -60,13 +60,13 @@ qui{
 	** If tmax not set, use maximum observed in dataset (increments of 1). **maybe change this to list, similar to tvec, in future  (condition applic for forward or fixedh)
 	if("`tmax'"==""){
 		qui sum _t if(_d==1)
-		local tmax = `r(max)' 
+		local tmax = ceil(`r(max)')     // go up to next highest integer
 	}
 	
 	** If user didn't specify a tmax for the sims, set it to be the max observed fail in dataset
 	if(`tmax'==0){
 		qui sum _t if(_d==1)
-		local tmax = r(max)
+		local tmax = ceil(`r(max)')
 	}
 	
 	
