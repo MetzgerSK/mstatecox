@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 11may2011}{...}
+{* *! version 23jun2022}{...}
 {viewerjumpto "Description" "mst##description"}{...}
 {viewerjumpto "System Requirements" "mst##prereq"}{...}
 {viewerjumpto "Background Reading" "mst##toread"}{...}
@@ -127,13 +127,14 @@ To estimate and generate predicted quantities from the model, you would:{p_end}
 
 {p 3}---------(our commands/help files step in here)---------{p_end}
 
-{p 6 12 2} 3.5.) Optional: For advanced users; use {helpb msttvc} to tell the other {cmd:mst} commands TVCs are present, if TVCs not declared with {cmd:stcox}.
-
 {p 8 12 2} 4.) {helpb mstutil} the data.  This declares the data structure as multi-state duration for all other {cmd:mst} commands.{p_end}
 
 {p 8 12 2} 5.) When covariates are present, use {helpb mstphtest} to check for proportional hazards violations and implement appropriate corrections.{p_end}
 
 {p 9 8 2} <<repeat Steps 3-5 after implementing any PH corrections>>{p_end}
+
+{p 6 12 2} 5.5.) Optional: For advanced users; use {helpb msttvc} to tell the other {cmd:mst} commands TVCs are present, if TVCs not declared with {cmd:stcox}.  
+This must occur after {cmd:mstphtest}, or else {cmd:mstphtest} will throw an error.{p_end}
 
 {p 8 12 2} 6.) When covariates are present, use {helpb mstcovar} to assign covariate values for the transition probability simulations.{p_end}
 
@@ -200,7 +201,7 @@ provided you save the results to the dataset.  Here, {helpb mstdraw} is an optio
 
 {p 4 4 2}
 Shawna K. Metzger{break}
-University of Virginia{break}
+University at Buffalo{break}
 shawna@shawnakmetzger.com
 {p_end}
 
@@ -212,5 +213,5 @@ btjones1@olemiss.edu
 
 
 {p 0 0 0}
-{bf:Last Updated} - 11MAY21
+{bf:Last Updated} - 23JUN22
 {p_end}

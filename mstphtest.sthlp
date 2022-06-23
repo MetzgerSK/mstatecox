@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 04may2021}{...}
+{* *! version 23jun2022}{...}
 {viewerjumpto "Syntax" "mstphtest##syntax"}{...}
 {viewerjumpto "Description" "mstphtest##description"}{...}
 {viewerjumpto "Examples" "mstphtest##examples"}{...}
@@ -31,7 +31,10 @@
 {synoptline}
 
 {p 4 6 2}
-Must first run {help stcox} and {help mstutil} before running {bf:mstphtest}.{p_end}
+Must first run {help stcox} and {help mstutil} before running {cmd:mstphtest}.{p_end}
+
+{p 4 6 2}
+If you intend to use {help msttvc}, must occur after running {cmd:mstphtest}.{p_end}
 
 
 {marker description}{...}
@@ -42,9 +45,12 @@ Must first run {help stcox} and {help mstutil} before running {bf:mstphtest}.{p_
 It tests the proportional hazard (PH) assumption for each stratum separately using Stata's {help estat phtest} and reports these results to the user.  Each stratum will correspond to a unique transition in the model unless you have collapsed any baseline hazards.{p_end}
 
 {pstd}
+{help estat phtest} cannot be used on a Cox model where {bf:tvc()}s have been declared.  For that reason, if you plan to use {help msttvc}, you must do so {it:after} you run {cmd:mstphtest}.{p_end}
+
+{pstd}
 Stata's {help estat phtest:PH test} relies on scaled Schoenfeld residuals.  
 However, the test assumes homogenous variances.  Specifically, it assumes the scaled Schoenfeld residuals for every transition have the same variance (Therneau and Grambsch 2000, 127-133).  
-This assumption is particularly suspect in the presence of stratified hazards, which are a hallmark of multi-state models.  It is only valid if all strata have the same variance.
+This assumption is particularly suspect in the presence of stratified hazards, which are a hallmark of multi-state models.  
 As a consequence, we must run PH tests separately on each stratum specified by stcox's {bf:strata()} option (see also {bf: {manpage ST 114:[ST] estat phtest}}, "Methods and Formulas").{p_end}
 
 {pstd}
@@ -114,6 +120,6 @@ In the presence of a single transition, {cmd:mstphtest, {it:phtest_opts}} is ide
 
 
 {p 0 0 0}
-{bf:Last Updated} - 04MAY21
+{bf:Last Updated} - 23JUN22
 {p_end}
 

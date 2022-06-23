@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 10feb2018}{...}
+{* *! version 23jun2022}{...}
 {viewerjumpto "Syntax" "msttvc##syntax"}{...}
 {viewerjumpto "Description" "msttvc##description"}{...}
 {viewerjumpto "Examples" "msttvc##examples"}{...}
@@ -33,8 +33,11 @@
 {synoptline}
 
 {p 4 6 2}
-Must first estimate {helpb stcox} before running {bf:msttvc}.  All interactions associated with time-varying covariates must be listed together at the end of stcox's covariate list.
+Must first estimate {helpb stcox} before running {cmd:msttvc}.  All interactions associated with time-varying covariates must be listed together at the end of stcox's covariate list.
 {p_end}
+
+{p 4 6 2}
+If you intend to use {help mstphtest}, must occur before running {cmd:msttvc}.{p_end}
 
 
 {marker description}{...}
@@ -106,5 +109,5 @@ used improperly.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 10FEB18
+{bf:Last Updated} - 23JUN22
 {p_end}
