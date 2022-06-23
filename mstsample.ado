@@ -29,7 +29,7 @@
 
 cap program drop mstsample
 program define mstsample, eclass sortpreserve
-
+    version 14.2
 local noiYN = `c(noisily)'	// Did user specify qui?  (Must do here b/c if you query within the qui block, you'll get 0, every time.)
 
 qui{

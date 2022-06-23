@@ -8,6 +8,7 @@
 
 cap program drop mstdraw	
 program define mstdraw, eclass sortpreserve
+    version 14.2
 qui{	
 	syntax [if], [NOLabel PRGRaph TRansinfo TYPE(string) TVAR(varname max=1) STGVAR(varlist min=2) SORT ID AREA(string) *]
 

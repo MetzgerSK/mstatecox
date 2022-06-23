@@ -7,6 +7,7 @@
 	
 cap program drop mstutil
 program define mstutil, eclass
+    version 14.2
 qui{
 	syntax , [FRom(varname) TO(varname) SDUR DRAW(varname)]
 	// SDUR: for when the user only has a single transition.

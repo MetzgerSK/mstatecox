@@ -15,7 +15,8 @@
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstphtest
-program define mstphtest, rclass
+program define mstphtest, rclass   
+    version 14.2
 qui{
 	syntax , [*]	// specify any estat phtest options after the comma
 	
