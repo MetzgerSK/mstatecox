@@ -13,7 +13,8 @@ qui{
 	
 	// take everything that's currently in ereturn, and just append it with this stuff (h/t to estsimp for the idea)
 	* why?  ensures this stuff doesn't stay in memory forever as global macros.  prevents user from doing something stupid. 
-	
+  
+  // Input validation checks ---------------------------------------------------	
 	// First, check to make sure the user has Stata 13 or later.  mstsample requires the Mata function selectindex(), which doesn't appear until Stata 13 and after.
 	if(`c(version)'<13){
 		noi di as err _c "You are running (or have {bf:version} set to) Stata 12 or lower.  {bf:mstsample} will eventually require the Mata function {bf:selectindex()}, "
@@ -88,24 +89,24 @@ qui{
 		exit 198
 	}
 	
-	// if the to variable and the transition variable are the same, clone the from variable to generate a new transition variable.  (mstsample gets fussy later if you don't)
-	if("`to'"=="`e(strata)'" & "`to'"!=""){
+  // Begin checks that may gen vars --------------------------------------------				
+	// if the to variable and the transition variable are the same, clone the to variable to generate a new transition variable.  (mstsample gets fussy later if you don't)
+	local extraToSet = ""
+    if("`to'"=="`e(strata)'" & "`to'"!=""){
 		cap drop trans__ms
 		clonevar trans__ms = `to'
 		label variable trans__ms "transition ID variable for mstatecox"
-		ereturn local strata trans__ms
-	}
-	
+		local extraToSet = "ereturn local strata trans__ms"
+        
 	// return the transition variable
 	* start by taking the transition variable from stcox's strata.  (You've already checked that stcox has strata specified above.)
-	ereturn local trans `e(strata)'
-	local internal `e(strata)'
+        
+        local internal trans__ms
+    }
 	
-	
-	* if there's no stratification, alert the user, but come up with a temp var in the meantime
+	// if there's no stratification, alert the user, but come up with a temp var in the meantime
 	if("`e(strata)'"==""){
 		if("`draw'"!=""){
-			ereturn local trans `draw'
 			local internal `draw'
 		}
 		else{
@@ -113,22 +114,19 @@ qui{
 			
 			cap drop trans__ms
 			gen trans__ms = 1
-			ereturn local trans trans__ms
 			local internal trans__ms
-		}
-		
+		}	
 	}
 	
 	// if single duration only...
 	if("`sdur'"!=""){
 		cap drop trans__ms
-		ereturn scalar sdur = 1
+		local sdurVal = 1
 		
 		// ...generate a new trans variable with only 1 transition, if user hasn't done already
 		if("`e(strata)'"=="" & "`draw'"==""){
 			gen trans__ms = 1
 			label variable trans__ms "transition ID variable for mstatecox"
-			ereturn local trans trans__ms
 			local internal trans__ms
 		}
 		else{
@@ -151,7 +149,10 @@ qui{
 		label variable to__ms "next stage ID variable for mstatecox"
 	}
 	else{		// if not single duration, then set that macro appropriately
-		ereturn scalar sdur = 0
+		local sdurVal = 0
+        
+        // Also return the transition variable
+        if("`internal'"=="")    local internal `e(strata)'
 	}
 	
 	// also see if stage 0 is a thing.  If so, Stata will get angry.  Make the user fix it.
@@ -178,7 +179,8 @@ qui{
 			exit 125
 		}
 	}
-	
+    
+  // ereturn all relv info -----------------------------------------------------	
 	// return highest stage number
 	qui sum `from'
 		local max = r(max)
@@ -186,6 +188,9 @@ qui{
 		local max = max(`max',r(max))
 	ereturn scalar maxStgNo = `max'
 	
+    // return sdur
+    ereturn scalar sdur = `sdurVal'
+    
 	// return number of transitions
 	qui tab `internal'
 	ereturn scalar nTrans = `r(r)'
@@ -196,5 +201,14 @@ qui{
 	// return to stage
 	ereturn local to `to'		
 
+    // return transition 
+    ereturn local trans `internal'
+    
+    // Set anything else that needs setting
+    `extraToSet'
+    
+    // Restore previous return list results
+    _return restore `retPres'
+    
 } // for bracket collapse in editor	
 end

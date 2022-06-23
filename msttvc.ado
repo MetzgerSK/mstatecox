@@ -33,13 +33,7 @@ qui{
 	noi di as gr _col(16) "You should be using this workaround only if:"
 	noi di as gr _col(24) "(a) {bf:stcox} is taking a while to run with {bf:tvc()}/{bf:texp()} specified; and"
 	noi di as gr _col(24) "(b) you are adept with Cox models, and understand how to {bf:stsplit} stratified data and generate the subsequent interaction terms properly."
-		
-	// Overwrite whatever's in tvc() and texp()
-	ereturn local tvc  `tvc'
-	ereturn local texp `texp'
-	
-	local namesTVC `tvc'
-	
+
 	// You now need to figure out what's a TVC and what isn't, so you can repost e(b) with the proper equation names
 	tempname skm_b skm_v
 	matrix `skm_b' = e(b)
@@ -50,10 +44,11 @@ qui{
 	local names_int = ""
 	local root = "`namesAll'"
 	
+	local namesTVC `tvc'
 	foreach v of local namesTVC{
 		tempvar `v'TVC
 		
-		qui gen double ``v'TVC' = `v' * `e(texp)'
+		qui gen double ``v'TVC' = `v' * `texp'
 		
 		local tvcStr = "`tvcStr' ``v'TVC'"
 		
@@ -143,5 +138,9 @@ qui{
 	noi di as ye " > NOTE: " as gr "{bf:msttvc} currently breaks Stata's ability to report stcox in hazard ratios **correctly**.  {bf:mstsample} is unaffected." 
 	noi di as gr "         If you need HRs, either replay the current stcox estimates with {bf:nohr} or reestimate the model entirely."
 	noi di ""
+    
+    // Overwrite whatever's in tvc() and texp()
+	ereturn local tvc  `tvc'
+	ereturn local texp `texp'
 } // for bracket collapse in editor	
 end
