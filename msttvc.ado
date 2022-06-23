@@ -83,7 +83,7 @@ qui{
 			cap gen double msttvc_`v'TVC = ``v'TVC'
 			if(_rc!=0){
 				local rand = runiformint(0,10000)
-				cap gen double msttvc_`v'TVC`rand' = `v'`TVC'`rand'
+				cap gen double msttvc_`v'TVC`rand' = `v'`TVC'
 				
 				if(_rc!=0)	local noGen = "Could not save {bf:msttvc}'s generated interaction term to the dataset due to a name conflict."
 			}
