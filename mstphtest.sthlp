@@ -104,7 +104,7 @@ In the presence of a single transition, {cmd:mstphtest, {it:phtest_opts}} is ide
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: Matrices}{p_end}
 {synopt:{cmd:phtest_{it:stratumID}}} for each stratum, a matrix containing the separate {cmd: estat phtest} results each covariate.  {it:stratumID} corresponds to {bf:e(strata)}'s value.{p_end}
-{synopt:{cmd:global_{it:stratumID}}} for each stratum, a matrix containing the degrees of freedom, chi2 value, and corresponding p-value for the global test.{p_end}
+{synopt:{cmd:global_{it:stratumID}}} for each stratum, a matrix containing the chi2 value, degrees of freedom, and corresponding p-value for the global test.{p_end}
 
 
 {marker cite}{...}

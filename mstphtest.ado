@@ -140,8 +140,8 @@ qui{
 			* covariates
 			matrix `phtest`trL'' = r(phtest)
 			* global test
-			matrix `global`trL'' = (r(df), r(chi2), r(p))
-			matrix colnames `global`trL'' = df chi2 p
+			matrix `global`trL'' = (r(chi2), r(df), r(p))
+			matrix colnames `global`trL'' = chi2 df p
 			matrix rownames `global`trL'' = e(strata)==`tr'
 		}
 		else{
