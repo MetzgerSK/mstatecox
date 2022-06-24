@@ -67,16 +67,19 @@ qui{
 			exit 198
 		}
 	}
+    // If transinfo, check for if, print message BEFORE the no label FYI
+    else{
+        if("`if'"!="")  noi di as gr " > {bf:if} ignored for {bf:transinfo}."
+    }
 	
 	// FYI: no labels
 	if("`labsF'"=="" & "`labsT'"=="" & "`nolab'"==""){
-		noi di as gr "Stages have no (value) labels; using numbers in diagram.  If you would like text descriptions, define a value label and apply it to both `from' and `to'."
+		noi di as gr "Stages have no (value) labels; using numbers in diagram.  If you would like text descriptions, define a value label and apply it to both {bf:`from'} and {bf:`to'}."
 	}
 	
 	*------------------------------------------------------------
 	// TRANSITION INFORMATION
 	if("`transinfo'"!=""){
-		if("`if'"!="")	noi di as gr "{bf:if} ignored for {bf:transinfo}."
 		cap _estimates hold cox, copy
 		preserve
 		

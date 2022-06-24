@@ -143,7 +143,7 @@ qui{
 			matrix rownames `global`trL'' = e(strata)==`tr'
 		}
 		else{
-			noi di _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
+			noi di _n _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
 		}
 		// if not the last transition, insert blank line between this tr's output and horz line for next
 		if("`ferest()'"!="")	noi di ""

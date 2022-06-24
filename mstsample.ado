@@ -1007,6 +1007,10 @@ qui{
 		}
 	}
 	
+    // holder for any FYI messages, so they print after "done!"
+    local hazovMsg = ""
+    
+    // do checks
 	if(`m_max'>1){
 		if("`hazoverride'"==""){
 			noi di _n as err "The outward transition hazards for one or more stages are summing to greater than 1 when they typically should not."
@@ -1024,7 +1028,7 @@ qui{
 			exit 125
 		}
 		else{
-			noi di _n as gr "{bf:hazoverride} invoked.  At least one of your hazards was larger than 1."
+            local hazovMsg = "{bf:hazoverride} invoked.  At least one of your hazards was larger than 1."
 			qui recode `refhaz' (.=0) if(`outhaz'==0)
 			qui replace `outhaz' = 1 if(`outhaz'>1 & `outhaz'<.)
 			ereturn scalar hazover = 1	//21DEC18 addition (to know when hazoverride's actually invoked, if specified)
@@ -1049,7 +1053,7 @@ qui{
 			exit 125
 		}
 		else{
-			noi di _n as gr "{bf:hazoverride} invoked.  At least one of your hazards was less than 0."
+            local hazovMsg = "{bf:hazoverride} invoked.  At least one of your hazards was less than 0."
 			qui replace `refhaz' = 0 if(`outhaz'<0)
 			qui replace `outhaz' = 0 if(`outhaz'<0)
 			qui recode `refhaz' (.=0) if(`outhaz'==0)
@@ -1060,12 +1064,6 @@ qui{
 	// to round out the return
 	if(`m_min'>=0 & `m_max'<=1 & "`hazoverride'"!=""){
 		ereturn scalar hazover = 0
-	}
-	
-	// If msfit's specified, but the matrix had to go into Mata, not Stata, memory:
-	if("`msfit'"!="" & "`where'"=="Mata"){
-		noi di as gr "{bf:msfit} specified, but {inp:tShoot_mstate} matrix too large for Stata memory.  Saved in Mata."
-		noi di as gr "To view, type {inp:{bf:mata: tShoot_mstate}}."
 	}
 	
 	tempvar refOverallSurv outhaz1
@@ -1125,6 +1123,14 @@ qui{
 	sort `sorter'
 
 	noi di as gr "done."		// display message
+    if("`hazovMsg'"!="")    noi di as gr " > `hazovMsg'"
+    	
+	// If msfit's specified, but the matrix had to go into Mata, not Stata, memory:
+	if("`msfit'"!="" & "`where'"=="Mata"){
+		noi di as gr "{bf:msfit} specified, but {inp:tShoot_mstate} matrix too large for Stata memory.  Saved in Mata."
+		noi di as gr "To view, type {inp:{bf:mata: tShoot_mstate}}."
+	}
+    
 	}	// end of convenience collapse bracket for section 1
 	
 
