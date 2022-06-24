@@ -10,8 +10,8 @@
 	* v2: rewrite to deal with possibility that collapsed covariate effects might exist.
 */
 
-*! Last edited: 20JUN21
-*! Last change: offset readded, noadj added, msg about frailties to prevent future panic, removed code for VCE override.
+*! Last edited: 23JUN22
+*! Last change: inserted version stmt
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstphtest
@@ -19,7 +19,7 @@ program define mstphtest, rclass
     version 14.2
 qui{
 	syntax , [*]	// specify any estat phtest options after the comma
-	
+    
 	** Make sure stcox's been run
 	if("`e(cmd2)'"!="stcox"){
 		local extra = ""
@@ -35,9 +35,6 @@ qui{
 		noi di as err "You must run {bf:mstutil} before running {bf:mstphtest}.  Try again."
 		exit 198
 	}
-		
-	// If detail not present as an option, add it.
-	if(!regexm("`options'", "d[a-z]*"))	local options = "`options' detail"
     
     ** If there's a frailty variable, that means there can't currently be a strata
     ** variable.  Flag that for the user (and our future selves), kick everything
@@ -45,7 +42,7 @@ qui{
     if("`e(shared)'"!=""){
     	noi di as gr "No {bf:strata()} variable present due to presence of {bf:shared()}.  Stata does not currently permit both in the same model."
         noi di as gr _n "Shifting to regular {bf:estat phtest} routine: "
-        cap noi estat phtest, `options'
+        cap noi estat phtest, detail `log' `km' `time' //  <- only poss non-plot opts.
         exit
     }
     
@@ -69,7 +66,11 @@ qui{
 	
 	local transVar `e(trans)'
 
-	
+	// If there's a plot, print "FYI, ignoring" message.
+    if(regexm("`options'", "plot")){
+        noi di as gr "Ignoring {bf:plot()} options (not currently permitted for {bf:mstphtest}).  Will need to generate manually with {cmd:estat phtest} by looping over strata."
+    }
+
 	// Get the varlist for each strata
 	qui levelsof `transVar', local(transIDs)
 	
@@ -123,10 +124,10 @@ qui{
                 // now a message that gets printed to the user about this in the 
                 // housekeeping section.
                 
-			cap qui estat phtest, `options'
+			cap qui estat phtest, detail `log' `km' `time' //  <- only poss non-plot opts.
 			
 			// If no error, say loudly
-			if(_rc==0)				noi estat phtest, `options'
+			if(_rc==0)				noi estat phtest, detail `log' `km' `time'
 			// If error, say insuff obsvs.
 			if(_rc==2001)			noi di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
 			// If any other error, just be generic.
