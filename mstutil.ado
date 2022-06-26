@@ -139,7 +139,7 @@ qui{
 		else{
 			noi di as gr _c "You specified {bf:sdur} for a single transition, but you "
             if("`e(strata)'"!=""){
-                noi di as gr "estimated stcox with a strata variable.  You must specify variables corresponding to the {bf:from} and {bf:to} stages."
+                noi di as gr "estimated stcox with a strata variable.  You must specify variables containing both the from and to stages."
                 cleanVars
                 _return restore `retPres'
                 exit 198
@@ -174,6 +174,7 @@ qui{
         local min = min(`min',r(min))
 	if(`min'!=1){
 		noi di as err "Your smallest stage is `min'.  Please give your stages sequential integer values starting at 1."
+		cleanVars
         _return restore `retPres'
         exit 125
 	}
@@ -188,6 +189,7 @@ qui{
 		qui sum `temp'
 		if(`r(sum)'!=0){
 			noi di as err "`v' contains non-integer elements.  Please give your `noun' sequential integer values starting at 1."
+			cleanVars
             _return restore `retPres'
             exit 125
 		}
@@ -224,4 +226,12 @@ qui{
     _return restore `retPres'
     
 } // for bracket collapse in editor	
+end
+
+program def cleanVars
+{
+    foreach x in "from__ms" "to__ms" "trans__ms"{
+        cap drop `x'
+    }
+}
 end
