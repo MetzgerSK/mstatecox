@@ -105,8 +105,8 @@ qui{
 		label variable trans__ms "transition ID variable for mstatecox"
 		local extraToSet = "ereturn local strata trans__ms"
         
-	// return the transition variable
-	* start by taking the transition variable from stcox's strata.  (You've already checked that stcox has strata specified above.)
+        noi di as gr "{bf:to()} variable and {bf:stcox}'s {bf:strata} variable are same.  {bf:mstsample} expects them to be separate."
+        noi di as gr "Generated fake transition variable named " as ye "trans__ms" as gr ".  No additional action is required on your part."		
         
         local internal trans__ms
     }
