@@ -19,6 +19,11 @@ program define mstphtest, rclass
     version 14.2
 qui{
 	syntax , [*]	// specify any estat phtest options after the comma
+	
+    // Unlike the other mst cmds, this one is r-class.  Like any of Stata's r-class
+    // commands, what's previously in r-class memory should be gone after running
+    // this command, even if there's an controlled early exit.  Ergo, no need to
+    // bother with _return hold.
     
 	** Make sure stcox's been run
 	if("`e(cmd2)'"!="stcox"){
@@ -43,6 +48,8 @@ qui{
     	noi di as gr "No {bf:strata()} variable present due to presence of {bf:shared()}.  Stata does not currently permit both in the same model."
         noi di as gr _n "Shifting to regular {bf:estat phtest} routine: "
         cap noi estat phtest, detail `log' `km' `time' //  <- only poss non-plot opts.
+            // push through estat phtest's regular r-class returns
+            if(_rc==0)  return add
         exit
     }
     

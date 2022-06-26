@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 02JUN22
-*! Last change: minor display tweak for ", trans"
+*! Last edited: 23JUN22
+*! Last change: inserted version stmt, r-class mem preserve
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstdraw	
@@ -51,6 +51,10 @@ qui{
 		exit 198
 	}
 	
+    // Preserve any results in return list
+    tempname retPres
+    _return hold `retPres'
+    
 	// if prgraph, also make sure correct number of stage variables are passed along.
 	if("`prgraph'"!=""){
 		qui levelsof `from', local(all)
@@ -65,7 +69,8 @@ qui{
 		
 		if(`numStages'!=`numVars' & `numStages'!=.){	
 			noi di as err "Model has `numStages' stages, but in {bf:stgvar}, you passed along `numVars'.  There should be the same number of variables as stages."
-			exit 198
+			_return restore `retPres'
+            exit 198
 		}
 	}
     // If transinfo, check for if, print message BEFORE the no label FYI
@@ -388,6 +393,9 @@ qui{
 		
 	}	
 	
+    // Restore previous return list results
+    _return restore `retPres'
+    
 } // for bracket collapse in editor
 end
 ********************************************************************************************************************************	

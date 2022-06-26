@@ -3,8 +3,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for details
 
-*! Last edited: 11JAN19 (part of MAR19 update)
-*! Last change: tidied warning messages, fixed noi/qui behavior
+*! Last edited: 23JUN22
+*! Last change: inserted version stmt, r-class mem preserve
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 	
 cap program drop msttvc
@@ -33,6 +33,10 @@ qui{
 	noi di as gr _col(16) "You should be using this workaround only if:"
 	noi di as gr _col(24) "(a) {bf:stcox} is taking a while to run with {bf:tvc()}/{bf:texp()} specified; and"
 	noi di as gr _col(24) "(b) you are adept with Cox models, and understand how to {bf:stsplit} stratified data and generate the subsequent interaction terms properly."
+    
+	// Preserve any results in return list
+    tempname retPres
+    _return hold `retPres'
 
 	// You now need to figure out what's a TVC and what isn't, so you can repost e(b) with the proper equation names
 	tempname skm_b skm_v
@@ -91,7 +95,9 @@ qui{
 			if("`noGen'"=="") 	noi di as err "{bf:msttvc}'s generated interaction term saved as " as ye "msttvc_`v'TVC`rand'" as re "."
 			else				noi di as err "`noGen'"
 			noi di as err "Please check the model's included covariates and try again."
-			exit 198
+			
+            _return restore `retPres'
+            exit 198
 		}
 	} // end tvc loop	
 	
@@ -120,7 +126,7 @@ qui{
 	if(regexm("`colEqs'","tvc main")){
 		noi di as err "All TVCs are not grouped at end of varlist."
 		noi di as err "Please reestimate stcox, with all the interactions listed last in the varlist."
-		
+		_return restore `retPres'
 		exit 198
 	}
 	
@@ -142,5 +148,9 @@ qui{
     // Overwrite whatever's in tvc() and texp()
 	ereturn local tvc  `tvc'
 	ereturn local texp `texp'
+    
+    // Restore previous return list results
+    _return restore `retPres'
+    
 } // for bracket collapse in editor	
 end

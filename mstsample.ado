@@ -57,6 +57,10 @@ qui{
 		exit 198
 	}
 	
+    	// (return mem altered next - preserve any results in return list)
+        tempname retPres
+        _return hold `retPres'
+        global temp_mstsampleNm `retPres'
 	** If tmax not set, use maximum observed in dataset (increments of 1). **maybe change this to list, similar to tvec, in future  (condition applic for forward or fixedh)
 	if("`tmax'"==""){
 		qui sum _t if(_d==1)
@@ -84,14 +88,16 @@ qui{
 	** Check to make sure that user didn't input a negative time.	(condition applic for forward or fixedh)
 	if(`stime'<0){
 		noi di as err "Starting time cannot be negative."
-		exit 451
+		tidy
+        exit 451
 	}
-	
+        
 	** Check to make sure that user didn't input a starting time that's greater than or equal to the max time in the dataset.  (condition applic for forward or fixedh)
 	qui sum _t
 	if(`stime'>=`r(max)'){		
 		noi di as error "Starting time of `stime' is greater than or equal to highest observed time in dataset.  Pick a smaller starting time."
-		exit 125
+		tidy
+        exit 125
 	}
 											
 	** Check to make sure starting stage is actually in the dataset (i.e., is valid) (condition applic for forward or fixedh, but do need to be smart about to/from)
@@ -115,28 +121,32 @@ qui{
 		qui count if(`destin'==`sstage')
 		if(`r(N)'!=0){
 			noi di as err "Stage `sstage' is an absorbing stage in your dataset.  `openingSent'tarting stage must have at least one `inOut' transition.  Try again."
-			exit 121
+			tidy
+            exit 121
 		}
 		
 		if("`fixedhorz'"!="")	local extra " for {bf:fixedhorz}"
 		
 		// otherwise, just tell them straight up.
 		noi di as err "No observations exist in which `origin' = `sstage'`extra'.  Try again."
-		exit 121
+		tidy
+        exit 121
 	}
 	
 	** Ensure that tmax isn't less than starting time, or else this will also be a boring simulation.	(condition applic for forward or fixedh)
 	*** NOTE: if you hit this error message, given that you've already checked that sTime<max(_t), it means that the user punched in something stupid.
 	if(`stime'>=`tmax'){
 		noi di as error "Starting time of `stime' is greater than or equal to time range for the simulations (=`tmax').  Either pick a smaller starting time ({bf:stime()}) or choose a larger endpoint for the simulated time range ({bf:tmax()})."
-		exit 125
+		tidy
+        exit 125
 	}
 	
 	** Check if there's actually a failure in this interval.  (condition applic for forward or fixedh)  
 	qui count if(_d==1 & _t>`stime' & _t<=`tmax')
 	if(r(N)==0){
 		noi di as err "There are no observed transitions in the interval (`stime',`tmax'].  At least one is required to compute (sensical) Cox transition probabilities."
-		exit 2000
+		tidy
+        exit 2000
 	}
 	
 	** check for PH violation correction - indicated by presence of TVC covars in matrix.  If no PH corrections, TVC will evaluate to missing.
@@ -154,7 +164,8 @@ qui{
 			
 		if(colsof(`skm_b')!=0 & `mstcovar'!=0){
 			noi di as err "{bf:stcox} has covariates, but no covariate values in memory.  Use {bf:mstcovar} to set your covariate values and try again."
-			exit 198
+			tidy
+            exit 198
 		}	
 		
 		** Then, make sure that there's a value for every covariate
@@ -167,7 +178,8 @@ qui{
 			// If no column number, kick error.
 			if(colnumb(mstcovarVals,"`x'")==.){												
 				noi di as err "Need values for every model covariate.  No value for " as ye "`x' " as re "in {bf:mstcovar}'s matrix."
-				exit 503
+				tidy
+                exit 503
 			}
 		}
 		
@@ -176,7 +188,8 @@ qui{
 		
 		if("`matMiss'"!="0"){
 			noi di as err "xvalue matrix has a missing value.  Matrix must have numerical values in all cells.  Set the values using {bf:mstcovar} and try again."
-			exit 198
+			tidy
+            exit 198
 		}
 		
 		// if all that's done, then just make xvals point to mstcovars
@@ -187,13 +200,15 @@ qui{
 	** number of subjects has to be 1, at minumum  (condition applic for forward or fixedh)
 	if(`n'<=0){
 		noi di as err "Must simulate at least one subject moving through process; {bf:n()} must be greater than 0.  Try again."
-		exit 125
+		tidy
+        exit 125
 	}
 	
 	** number of simulations has to be 1, at minumum (condition applic for forward or fixedh)
 	if(`sims'<=0){
 		noi di as err `"Must "run" the process at least once; {bf:sims()} must be greater than 0.  Try again."'
-		exit 125
+		tidy
+        exit 125
 	}
 	
 	** If sliceTrigger==TRUE *and* the user's specified gen(), make sure you have a place to save the stage output from each sim draw (11JUL17)   
@@ -256,6 +271,7 @@ qui{
 					noi di as ye	"    `c(pwd)'" 
 					noi di as err 	" Please change your working directory to one where Stata has write permission, using either {bf:cd} or {bf:mstsample}'s {bf:dir()} option, then try again."
 					
+                    tidy
 					exit 608
 				}
 				else{				// -- Directory doesn't exist in PWD, *but* the user's given you an alternative directory path.  See if you can make the folder there.
@@ -278,6 +294,7 @@ qui{
 							noi di as ye	"	 `dir'"
 							noi di as err 	" Please change your working directory to one where Stata has write permission, using either {bf:cd} or {bf:mstsample}'s {bf:dir()} option, then try again."
 						
+                            tidy
 							exit 608
 						}
 					}
@@ -306,7 +323,8 @@ qui{
 	if("`path'"=="`gen'" & "`gen'"!=""){
 		noi di as err "{bf:gen()} specified to save simulation output as variables and {bf:path()} specified to save each individual subject's path."
 		noi di as err "The two options cannot have the same stubname for variable generation.  Please pick a different stubname for each option and try again."
-		exit 110
+		tidy
+        exit 110
 	}
 	
 	// The user can't specify both terse and verbose.  If they do, go with default, given number of cores.   (condition applic for forward or fixedh)
@@ -342,7 +360,8 @@ qui{
 			noi di as red "{bf:mstsample} requires the exact same set of observations as {bf:stcox}, or else {bf:mstsample}'s hazard calculations will be wrong."
 			noi di as red "Check your dataset and try again."
 			noi di ""
-			exit 459
+			tidy
+            exit 459
 		}
 	}
 	
@@ -948,7 +967,7 @@ qui{
 	noi di as gr "." _c			// display message
 	tempvar outhaz outHaz 
 		
-		
+
 		// Start the actual calculations.
 		* ensure S(t) is at 1 for starting time, if missing
 		recode `refHaz' (.=0) if(`refT'==`stime')
@@ -1065,7 +1084,7 @@ qui{
 	if(`m_min'>=0 & `m_max'<=1 & "`hazoverride'"!=""){
 		ereturn scalar hazover = 0
 	}
-	
+    
 	tempvar refOverallSurv outhaz1
 		gen double `outhaz1' = 1-`outhaz'	// 1 - hazsum  (to load into Mata)
 		gen double `refOverallSurv' = .
@@ -2464,6 +2483,10 @@ program tidy
 	// sortpreserve on mstsample will return the data to original order
 	
 	// getting a list of Mata objects is apparently more of chore than I expected.
+    
+    // restore r-class memory
+    _return restore $temp_mstsampleNm
+    macro drop temp_mstsampleNm
 }
 end
 ********************************************************************************************************************************
@@ -2522,7 +2545,8 @@ program covarDemean, sortpreserve
 		else if("`dirOpt'"=="rem")	local dir = 1
 		else{
 			noi di _n as err `"Helper function error.  Invalid {bf:covarDemean} 'dirOpt' argument.  Can only be "dem" or "rem"."'
-			exit
+			tidy
+            exit
 		}
 		
 		// pull covar mean

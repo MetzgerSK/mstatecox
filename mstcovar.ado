@@ -9,8 +9,8 @@
 	Default value = median (as of 04AUG17).
 */
 
-*! Last edited: 21JUN22
-*! Last change: ability to set value for offset + esamp convenience option
+*! Last edited: 23JUN22
+*! Last change: inserted version stmt, r-class mem preserve, ability to set value for offset + esamp convenience option
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstcovar
@@ -55,7 +55,7 @@ qui{
 			
 			noi di ""
 		}
-		exit
+        exit
 	}
 
 	// CLEAR: See if it's a clear.  If so, do what it says.
@@ -83,7 +83,7 @@ qui{
 		if("`varlist'`names'`value'`replace'"!=""){
 			noi di _n as green "All additional options ignored."
 		}
-		exit
+        exit
 	}
 	
 	// Make sure user's specified mstutil'd beforehand
@@ -91,12 +91,17 @@ qui{
 		noi di as err "You must run {bf:mstutil} before running {bf:mstcovar}.  Try again."
 		exit 198
 	}
+    
+    // Preserve any results in return list
+    tempname retPres
+    _return hold `retPres'
 	
     // Ensure e(sample) exists (which it won't, if the user loads a save set of
     // regression results).
     count if(e(sample)==1)
     if(`r(N)'!=`e(N)'){
         noi di as err "{bf:e(sample)} not in ereturn memory.  Reestimate the model and try again."
+        _return restore `retPres'
         exit 111
     }
     
@@ -105,19 +110,22 @@ qui{
 		// Make sure the Cox model in memory has a frailty term, if frailty specified
 		if("`frailty'"!="" & "`e(cmd)'"!="stcox_fr"){
 			noi di in gr "(Log-)frailty value specified, but Cox model in memory has no frailty term."
-			exit
+			_return restore `retPres'
+            exit
 		}
 		       
         // Make sure the Cox model in memory has an offset term, if offset specified
 		if("`offset'"!="" & "`e(offset)'"==""){
 			noi di in gr "Offset value specified, but Cox model in memory has no offset term."
-			exit
+			_return restore `retPres'
+            exit
 		}
         
 		// If both frailty and offset specified, kick an error
 		if("`frailty'"!="" & "`offset'"!=""){
 			noi di as err "Cannot specify both {bf:frailty} and {bf:offset}.  Must specify one at a time."
-			exit 198
+			_return restore `retPres'
+            exit 198
 		}
 		
 		// If the user's specified anything else, let them know it'll be ignored
@@ -130,7 +138,8 @@ qui{
 		// Ensure the value the user's entered is a number, not a tabstat statistic.
 		if(real("`value'")==.){
 			noi di as err "Must specify a numerical value in {bf:value()} when {bf:`frailty'`offset'} specified."
-			exit 108
+			_return restore `retPres'
+            exit 108
 		}
         
 		// Set the value of the log-frailty
@@ -148,13 +157,15 @@ qui{
 				noi di as gr "Offset set to " as ye `value'
 			}
 		}
+        _return restore `retPres'
 		exit
 	}
 	
 	// otherwise, there needs to be a master variable in varname.
 	if("`varlist'"==""){
 		noi di as re "Master variable must be specified."
-		exit 100
+		_return restore `retPres'
+        exit 100
 	}
 	
 	cap macro list mstcovar_`varlist'
@@ -171,6 +182,7 @@ qui{
 		if(`rcExist'!=0){
 			noi di as red "No mstcovar list in memory for " as ye "`varlist'"
 			noi di as red "Generate the list by adding the {bf:names()} option and try again."
+            _return restore `retPres'
 			exit 198
 		}
 		
@@ -190,7 +202,8 @@ qui{
 		}
 		else{
 			noi di as red "{bf:names()} does not match " as ye "`varlist'" as red "'s current {bf:mstcovar} list in memory.  If you wish to overwrite the list, add {bf:replace} as an option and run again." 
-			exit 198
+			_return restore `retPres'
+            exit 198
 		}
 	}
 	
@@ -202,14 +215,15 @@ qui{
 		
 		if(`length'>1){
 			noi di as red "{bf:value()} can only contain a single number or a single {it:statname} from {help tabstat##statname:tabstat}."
-			exit 123
+			_return restore `retPres'
+            exit 123
 		}
 	}
 	
 ****************************************************************************
-// Error checking done.  Do the actual stuff.
+// Error checking done.  Do the actual stuff.    
 	
-	// Pull the sample mean		** NOTICE: you do restrict to the estimation sample here, just in case.	// 21FEB19
+    // Pull the sample mean		** NOTICE: you do restrict to the estimation sample here, just in case.	// 21FEB19
 	tempname meanMini	
 	tabstat `varlist' if(e(sample)==1), statistics(mean) save
 	qui return list
@@ -324,5 +338,7 @@ qui{
 	matrix rown mstcovarVals = "vals"
 	matrix rown mstcovarVals_means = "means"
 
+    // Restore previous return list results
+    _return restore `retPres'
 }
 end

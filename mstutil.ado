@@ -3,7 +3,9 @@
 // ** part of mstatecox package
 // ** see "help mst" for details
 
-*! 21JUN21
+*! Last edited: 23JUN22
+*! Last change: inserted version stmt, r-class mem preserve
+*! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 	
 cap program drop mstutil
 program define mstutil, eclass
@@ -23,7 +25,7 @@ qui{
 		noi di as error  "Try running the command again using Stata 13 or higher."
 		exit 133
 	}
-	
+  
 	// Check to ensure moremata, ftools, and gtools installed next
 	cap which lmoremata.mlib
 	local rc_mm = _rc
@@ -89,8 +91,12 @@ qui{
 		noi di as err "You must either (1) specify variables containing both the from and to stages or (2) declare your data to contain a single transition only.  Try again."
 		exit 198
 	}
-	
+    
   // Begin checks that may gen vars --------------------------------------------				
+    // Preserve any results in return list
+    tempname retPres
+    _return hold `retPres'
+    
 	// if the to variable and the transition variable are the same, clone the to variable to generate a new transition variable.  (mstsample gets fussy later if you don't)
 	local extraToSet = ""
     if("`to'"=="`e(strata)'" & "`to'"!=""){
@@ -133,6 +139,8 @@ qui{
 		else{
 			noi di as gr _c "You specified {bf:sdur} for a single transition, but you "
             if("`e(strata)'"!="")	noi di as gr "estimated stcox with a strata variable.  Transition variable set to " as ye "`e(strata)'" as gr "."
+                _return restore `retPres'
+                exit 198
 			if("`draw'"!="")	    noi di as gr "specified the {bf:draw} option.  Ignoring {bf:sdur}."
 		}
 		
@@ -155,8 +163,7 @@ qui{
         // Also return the transition variable
         if("`internal'"=="")    local internal `e(strata)'
 	}
-	
-	// also see if stage 0 is a thing.  If so, Stata will get angry.  Make the user fix it.
+    
 	// also see if stage 0 is a thing (or stage 2 being smallest, or...).  If so, Stata will get angry.  Make the user fix it.
 	qui sum `from'
         local min = r(min)
@@ -164,7 +171,8 @@ qui{
         local min = min(`min',r(min))
 	if(`min'!=1){
 		noi di as err "Your smallest stage is `min'.  Please give your stages sequential integer values starting at 1."
-		exit 125
+        _return restore `retPres'
+        exit 125
 	}
 
 	// make sure from and to (AND trans) are all integers
@@ -177,7 +185,8 @@ qui{
 		qui sum `temp'
 		if(`r(sum)'!=0){
 			noi di as err "`v' contains non-integer elements.  Please give your `noun' sequential integer values starting at 1."
-			exit 125
+            _return restore `retPres'
+            exit 125
 		}
 	}
     
