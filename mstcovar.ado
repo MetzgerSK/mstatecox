@@ -92,6 +92,14 @@ qui{
 		exit 198
 	}
 	
+    // Ensure e(sample) exists (which it won't, if the user loads a save set of
+    // regression results).
+    count if(e(sample)==1)
+    if(`r(N)'!=`e(N)'){
+        noi di as err "{bf:e(sample)} not in ereturn memory.  Reestimate the model and try again."
+        exit 111
+    }
+    
 	// If it's the frailty or the offset they've specified, set the value and be done
 	if("`frailty'"!="" | "`offset'"!=""){
 		// Make sure the Cox model in memory has a frailty term, if frailty specified
