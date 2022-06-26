@@ -155,21 +155,25 @@ qui{
 	}
 	
 	// also see if stage 0 is a thing.  If so, Stata will get angry.  Make the user fix it.
+	// also see if stage 0 is a thing (or stage 2 being smallest, or...).  If so, Stata will get angry.  Make the user fix it.
 	qui sum `from'
-	if(`r(min)'<=0){
-		noi di as err "Your smallest stage is `r(min)'.  Please give your stages sequential integer values starting at 1."
+        local min = r(min)
+    qui sum `to'
+        local min = min(`min',r(min))
+	if(`min'!=1){
+		noi di as err "Your smallest stage is `min'.  Please give your stages sequential integer values starting at 1."
 		exit 125
 	}
-	
+
 	// make sure from and to (AND trans) are all integers
 	local noun = "stages"
-	foreach v of varlist `from' `to' `trans'{
-		if("`v'"=="trans")	local noun = "transitions"
+	foreach v of varlist `from' `to' `internal'{
+        if("`ferest()'"=="")	local noun = "transitions"
 		tempvar temp
 		gen `temp' = mod(`v', 1)
-		
+        
 		qui sum `temp'
-		if(`r(max)'>0){
+		if(`r(sum)'!=0){
 			noi di as err "`v' contains non-integer elements.  Please give your `noun' sequential integer values starting at 1."
 			exit 125
 		}

@@ -190,7 +190,7 @@ qui{
 	* begin by letting Stata simplify any math the user inputted
 	cap local value = `value'
 	if("`value'"!=""){
-		local length: list sizeof values
+		local length: list sizeof value
 		
 		if(`length'>1){
 			noi di as red "{bf:value()} can only contain a single number or a single {it:statname} from {help tabstat##statname:tabstat}."

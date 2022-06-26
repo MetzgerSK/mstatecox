@@ -28,13 +28,13 @@ qui{
 	local labsF: val l `from'
 	local labsT: val l `to'
 	
-	if("`graph'"=="" & "`transinfo'"=="" & "`prgraph'"==""){
-		noi di as err "You need to specify {bf:trans} or {bf:prgraph}."
+	if("`transinfo'"=="" & "`prgraph'"==""){
+		noi di as err "You need to specify {bf:transinfo} or {bf:prgraph}."
 		exit 198
 	}
 	
-	if("`graph'"!="" & "`transinfo'"!="") {
-		noi di as err "You must specify only one of these options at a time: {bf:trans} or {bf:prgraph}."
+	if("`transinfo'"!="" & "`prgraph'"!="") {
+		noi di as err "You must specify only one of these options at a time: {bf:transinfo} or {bf:prgraph}."
 		exit 198
 	}
 	
@@ -393,7 +393,7 @@ end
 // To reverse variable order in a list (needed for mstdraw).  HT to Kit Baum for saving me coding time.
 cap mata: mata drop revVars()
 mata:	
-void revVars(string vars)	//(string vars)
+void revVars(string vars)
 {
 	string v
 	string v2
