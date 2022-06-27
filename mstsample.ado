@@ -57,6 +57,11 @@ qui{
 		exit 198
 	}
 	
+    ** If hazover not specified as option but scalar exists in eclass mem, wipe it out
+    if("`hazoverride'"=="" & "`e(hazover)'"!=""){
+        mata: st_numscalar("e(hazover)", J(0,0,.))
+    }
+    
     	// (return mem altered next - preserve any results in return list)
         tempname retPres
         _return hold `retPres'
