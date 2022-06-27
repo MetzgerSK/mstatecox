@@ -66,22 +66,16 @@ qui{
         tempname retPres
         _return hold `retPres'
         global temp_mstsampleNm `retPres'
+        
 	** If tmax not set, use maximum observed in dataset (increments of 1). **maybe change this to list, similar to tvec, in future  (condition applic for forward or fixedh)
-	if("`tmax'"==""){
+	if("`tmax'"=="" | `tmax'==0){
 		qui sum _t if(_d==1)
 		local tmax = ceil(`r(max)')     // go up to next highest integer
 	}
-	
-	** If user didn't specify a tmax for the sims, set it to be the max observed fail in dataset
-	if(`tmax'==0){
-		qui sum _t if(_d==1)
-		local tmax = ceil(`r(max)')
-	}
-	
-	
+    
 	tempname skm_b
 	matrix `skm_b' = e(b)
-	
+
     ** Make sure user didn't specify a non-parametric model
 	** If fixed horizon specified, make sure the user understands what that means
 	if("`fixedhorz'"!=""){
@@ -100,7 +94,7 @@ qui{
 	** Check to make sure that user didn't input a starting time that's greater than or equal to the max time in the dataset.  (condition applic for forward or fixedh)
 	qui sum _t
 	if(`stime'>=`r(max)'){		
-		noi di as error "Starting time of `stime' is greater than or equal to highest observed time in dataset.  Pick a smaller starting time."
+		noi di as error "Starting time of `stime' is greater than or equal to largest time at which a failure occurs in dataset.  Pick a smaller starting time."
 		tidy
         exit 125
 	}
@@ -202,14 +196,14 @@ qui{
 
 	} // convenience collapse bracket end
 
-	** number of subjects has to be 1, at minumum  (condition applic for forward or fixedh)
+	** number of subjects has to be 1, at minimum  (condition applic for forward or fixedh)
 	if(`n'<=0){
 		noi di as err "Must simulate at least one subject moving through process; {bf:n()} must be greater than 0.  Try again."
 		tidy
         exit 125
 	}
 	
-	** number of simulations has to be 1, at minumum (condition applic for forward or fixedh)
+	** number of simulations has to be 1, at minimum (condition applic for forward or fixedh)
 	if(`sims'<=0){
 		noi di as err `"Must "run" the process at least once; {bf:sims()} must be greater than 0.  Try again."'
 		tidy
