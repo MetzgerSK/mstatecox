@@ -61,7 +61,6 @@ qui{
     if("`hazoverride'"=="" & "`e(hazover)'"!=""){
         mata: st_numscalar("e(hazover)", J(0,0,.))
     }
-    
     	// (return mem altered next - preserve any results in return list)
         tempname retPres
         _return hold `retPres'
@@ -84,14 +83,17 @@ qui{
 		noi di	  as gr		" and then count {it:backward} to s = " as ye `stime' as gr "."
 	}
 	
-	** Check to make sure that user didn't input a negative time.	(condition applic for forward or fixedh)
+	** Check to make sure that user didn't input a negative time.	
+    ** (condition applic for forward or fixedh)
 	if(`stime'<0){
 		noi di as err "Starting time cannot be negative."
 		tidy
         exit 451
 	}
         
-	** Check to make sure that user didn't input a starting time that's greater than or equal to the max time in the dataset.  (condition applic for forward or fixedh)
+	** Check to make sure that user didn't input a starting time that's greater 
+    ** than or equal to the max time in the dataset.  
+    ** (condition applic for forward or fixedh)
 	qui sum _t
 	if(`stime'>=`r(max)'){		
 		noi di as error "Starting time of `stime' is greater than or equal to largest time at which a failure occurs in dataset.  Pick a smaller starting time."
@@ -99,7 +101,8 @@ qui{
         exit 125
 	}
 											
-	** Check to make sure starting stage is actually in the dataset (i.e., is valid) (condition applic for forward or fixedh, but do need to be smart about to/from)
+	** Check to make sure starting stage is actually in the dataset (i.e., is valid) 
+    ** (condition applic for forward or fixedh, but do need to be smart about to/from)
 	local origin `e(from)'
 	local destin `e(to)'
 	
@@ -132,15 +135,18 @@ qui{
         exit 121
 	}
 	
-	** Ensure that tmax isn't less than starting time, or else this will also be a boring simulation.	(condition applic for forward or fixedh)
-	*** NOTE: if you hit this error message, given that you've already checked that sTime<max(_t), it means that the user punched in something stupid.
+	** Ensure that tmax isn't less than starting time, or else this will also be 
+    ** a boring simulation.	(condition applic for forward or fixedh)
+	*** NOTE: if you hit this error message, given that you've already checked 
+    *** that sTime<max(_t), it means that the user punched in something stupid.
 	if(`stime'>=`tmax'){
 		noi di as error "Starting time of `stime' is greater than or equal to time range for the simulations (=`tmax').  Either pick a smaller starting time ({bf:stime()}) or choose a larger endpoint for the simulated time range ({bf:tmax()})."
 		tidy
         exit 125
 	}
 	
-	** Check if there's actually a failure in this interval.  (condition applic for forward or fixedh)  
+	** Check if there's actually a failure in this interval.  
+    ** (condition applic for forward or fixedh)  
 	qui count if(_d==1 & _t>`stime' & _t<=`tmax')
 	if(r(N)==0){
 		noi di as err "There are no observed transitions in the interval (`stime',`tmax'].  At least one is required to compute (sensical) Cox transition probabilities."
@@ -148,11 +154,15 @@ qui{
         exit 2000
 	}
 	
-	** check for PH violation correction - indicated by presence of TVC covars in matrix.  If no PH corrections, TVC will evaluate to missing.
+	** check for PH violation correction - indicated by presence of TVC covars 
+    ** in matrix.  If no PH corrections, TVC will evaluate to missing.
 	local tvc = colnumb(`skm_b', "tvc:") 
 	
 	
-	** check to make sure everything in the e(b) matrix has a value in the mstcovarVal matrix		(condition applic for forward or fixedh)
+	** check to make sure everything in the e(b) matrix has a value in the 
+    ** mstcovarVal matrix		
+    ** (condition applic for forward or fixedh)
+    ** 
 	** The only time you don't need a covariate matrix is if the model's non-parametric.  Check this.
 	{
 		// use skm_b to see how many estimates, and if estimates exist, check for the mstcovarVal matrix
@@ -169,7 +179,7 @@ qui{
 		
 		** Then, make sure that there's a value for every covariate
 		local namesB: colnames `skm_b'
-			local namesB: list uniq namesB	// in case there's TVCs.  Gets rid of extra.
+			local namesB: list uniq namesB	// in case there are TVCs.  Gets rid of extra.
 			local colsofB: list sizeof namesB
 		
 		foreach x of local namesB{
@@ -196,21 +206,24 @@ qui{
 
 	} // convenience collapse bracket end
 
-	** number of subjects has to be 1, at minimum  (condition applic for forward or fixedh)
+	** number of subjects has to be 1, at minimum  
+    ** (condition applic for forward or fixedh)
 	if(`n'<=0){
 		noi di as err "Must simulate at least one subject moving through process; {bf:n()} must be greater than 0.  Try again."
 		tidy
         exit 125
 	}
 	
-	** number of simulations has to be 1, at minimum (condition applic for forward or fixedh)
+	** number of simulations has to be 1, at minimum 
+    ** (condition applic for forward or fixedh)
 	if(`sims'<=0){
 		noi di as err `"Must "run" the process at least once; {bf:sims()} must be greater than 0.  Try again."'
 		tidy
         exit 125
 	}
 	
-	** If sliceTrigger==TRUE *and* the user's specified gen(), make sure you have a place to save the stage output from each sim draw (11JUL17)   
+	** If sliceTrigger==TRUE *and* the user's specified gen(), make sure you have 
+    ** a place to save the stage output from each sim draw (11JUL17)   
 	// Also for figuring out how you're going to be processing things.														(condition applic for forward or fixedh)
 	local p = `n' * (`tmax'-`stime'+1)
 	local overall = `p' * `sims'
@@ -245,7 +258,9 @@ qui{
 			local rand = runiformint(0,10000)
 		
 		local folderName = "`fName'_`date'_`fTime'_`rand'"
-			// it's already highly unlikely there'll be a naming conflict, but esp. with the addition of "rand".  (...though if they're setting seed, "rand" won't be so random.  Hopefully, the time portion will be enough.)
+			// it's already highly unlikely there'll be a naming conflict, but esp.
+            // with the addition of "rand".  (...though if they're setting seed,
+            // "rand" won't be so random.  Hopefully, the time portion will be enough.)
 		
 		// See if pwd is writable
 		cap mkdir "`folderName'"
@@ -310,7 +325,8 @@ qui{
 		noi di as ye		"    `stageSliceDir'"
 	}
 	
-	** Clock is forward, unless user specifies "gap"   (condition applic for forward or fixedh)
+	** Clock is forward, unless user specifies "gap"   
+    ** (condition applic for forward or fixedh)
 	if("`gap'"==""){
 		local clock = "forward"
 	}
@@ -318,7 +334,8 @@ qui{
 		local clock = "gap"
 	}
 
-	** If both path and gen specified, the stubs have to be different   (condition applic for forward or fixedh)
+	** If both path and gen specified, the stubs have to be different   
+    ** (condition applic for forward or fixedh)
 	if("`path'"=="`gen'" & "`gen'"!=""){
 		noi di as err "{bf:gen()} specified to save simulation output as variables and {bf:path()} specified to save each individual subject's path."
 		noi di as err "The two options cannot have the same stubname for variable generation.  Please pick a different stubname for each option and try again."
@@ -326,7 +343,9 @@ qui{
         exit 110
 	}
 	
-	// The user can't specify both terse and verbose.  If they do, go with default, given number of cores.   (condition applic for forward or fixedh)
+	// The user can't specify both terse and verbose.  If they do, go with 
+    // default, given number of cores.   
+    ** (condition applic for forward or fixedh)
 	if("`terse'"!="" & "`verbose'"!=""){
 		local plural = "s"
 		if(`c(processors)'==1){
@@ -341,7 +360,9 @@ qui{
 		local terse = ""
 	}
 	
-	** If e(sample) not in memory, then it's likely the user's loaded an already-estimated stcox model.  Set e(sample) manually.   (condition applic for forward or fixedh)
+	** If e(sample) not in memory, then it's likely the user's loaded an 
+    ** already-estimated stcox model.  Set e(sample) manually.   
+    ** (condition applic for forward or fixedh)
 	// !! Needs tweaking (not yet consistently functional)
 	estimates esample
 	
@@ -366,7 +387,8 @@ qui{
 	
 
 	
-	** If user's specified both gen and speed, remind them that only the results will be saving (not also the indv sim pulls)
+	** If user's specified both gen and speed, remind them that only the results 
+    ** will be saving (not also the indv sim pulls)
 	if("`speed'"!=""){
 		if("`gen'"!=""){
 			local bit1 = "Both {bf:gen} and "
@@ -398,7 +420,8 @@ qui{
 	*************************************************
 	
 	*---------------------------------------------------------------------------
-	// Let the games begin.  All of this is identical for forward vs. fixedh until *right* before the sim section starts.
+	// Let the games begin.  
+    // All of this is identical for forward vs. fixedh until *right* before the sim section starts.
 	tempvar sorter
 	gen `sorter' = _n
 	sort _t `from' `to'
@@ -421,7 +444,7 @@ qui{
 	* BASELINE HAZ
 	tempvar H0
 
-	// In case reestimating's needed.  Just do this once, to reduce code redundancy. 
+	// In case reestimating's needed.  Just do this once, to reduce redundancy. 
 	if("`e(method)'"=="breslow")		local tieType = "breslow"
 	else if("`e(method)'"=="efron")		local tieType = "efron"
 	else if("`e(method)'"=="partial")	local tieType = "exactp"
@@ -612,9 +635,11 @@ qui{
 				predict double `basehc', basehc
 
 		*********************************************************************************************************************
-			  // Need to do linear combo for mstcovar values (and doing it here to make life easier, in the longer run.)
+			  // Need to do linear combo for mstcovar values  
+              // (and doing it here to make life easier, in the longer run.)
 				
-				// Fill TIC first (and since demeaned model is in memory, means you have to fill in the demeaned vars for the prediction.)
+				// Fill TIC first (and since demeaned model is in memory, means 
+                // you have to fill in the demeaned vars for the prediction.)
 				foreach x of local namesTIC{
 					covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
 				}
@@ -637,7 +662,8 @@ qui{
 				cap drop `xbTVC'
 				tempvar xbTVC
 				matrix sco double `xbTVC' = `skm_b', eq("tvc") 
-					// then, add in the t bit, which is equiv to multiplying the TVC's pseudo-linear combo times time's functional form
+					// then, add in the t bit, which is equiv to multiplying the 
+                    // TVC's pseudo-linear combo times time's functional form
 					replace `xbTVC' = `xbTVC' * `texp'
 				
 				tempfile stuff
@@ -661,7 +687,8 @@ qui{
 			
 			
 			// No longer needed, because preserve will restore things
-			// Reset the stset to the original thing (i.e., without the id() from stsplit, if there was no ID to start with)
+			// Reset the stset to the original thing (i.e., without the id() from 
+            // stsplit, if there was no ID to start with)
 
                 * time (or else will show up as _t when you stset, which isn't helpful)
 				local st_t:			char _dta[st_bt]
@@ -690,7 +717,7 @@ qui{
 				local st_show:		char _dta[st_show]
 			
 			stset `st_t' `st_ifexp' `st_weight' , 				///
-						failure(`st_d'`st_dNums') id(`stID_ch') 	///
+						failure(`st_d'`st_dNums') id(`stID_ch') ///
 						scale(`st_scale')	enter(`st_enter') 	///
 						exit(`st_exit')		origin(`st_origin') ///
 						ever(`st_ever')		never(`st_never') 	///
@@ -743,11 +770,15 @@ qui{
 				if(`c(N)'>`c(matsize)' & `c(N)'< `c(max_matsize)'){
 					set matsize `c(N)'
 				
-					// quick sorting to make sure observations are in same order  (nothing in the preserve block changes sort order, so this should match perfectly.)
+					// quick sorting to make sure observations are in same order  
+                    // (nothing in the preserve block changes sort order, so this 
+                    // should match perfectly.)
 					mkmat `hr', mat(`hrMat')
 				}	
 			// Otherwise, do a tempfile for merging.  Which is suboptimal.  
-			* (Could eventually redo with Mata, if desired: sort on _t and trans pass everything into Mata memory, restore, sort on _t and trans, then load in the dataset.)
+			* (Could eventually redo with Mata, if desired: sort on _t and trans 
+            * pass everything into Mata memory, restore, sort on _t and trans, 
+            * then load in the dataset.)
 				else{
 					local mrg = 1
 					
@@ -873,7 +904,8 @@ qui{
 		}
 	}
 	
-	// Or maybe just leave this loop in here for all the naming of things, to ensure there's no name conflict before the simulations.
+	// Or maybe just leave this loop in here for all the naming of things, to 
+    // ensure there's no name conflict before the simulations.
 	if(_rc==0 & `keepHolders'==1){	// kick error if the holder variables need to be saved, but var w/the name already exists
 		noi di _n as err "{bf:gen()} specified to save simulation output as variables.  However, variable named `errMsg' already exists.  Please drop variable and try again."
 		tidy `sorter'
@@ -952,7 +984,8 @@ qui{
 		drop if `refT'==.
 
 		
-		// For every unique from-to pairing in the dataset, make sure there's a stime observation where surv = 1
+		// For every unique from-to pairing in the dataset, make sure there's a 
+        // stime observation where surv = 1
 		tempvar flagT34 firstInP
 		bysort `refFrom' `refTo' (`refT'): gen `firstInP' = _n==1	// notice: is giving you a t=0 observation for all transitions. (Important for differencing purposes.)
 		expand 2 if(`firstInP'==1), gen(`flagT34')
@@ -977,7 +1010,6 @@ qui{
 	// In preparation for the sims, sum all the outward transitions together for every from-t pairing
 	noi di as gr "." _c			// display message
 	tempvar outhaz outHaz 
-		
 
 		// Start the actual calculations.
 		* ensure S(t) is at 1 for starting time, if missing
@@ -1001,7 +1033,7 @@ qui{
 			mata: mata drop Haz `mergeID' 		// cleanup
 		}
 		
-		replace `refhaz' = `refhaz' * -1	// because the diff function is coded for Surv, originally, so it assumes decreasing values as t increases.
+		replace `refhaz' = `refhaz' * -1	    // because the diff function is coded for Surv, originally, so it assumes decreasing values as t increases.
 		
 	// go h_q(t) -> outward hazard for all 'from' stages	
 	bysort `refFrom' `refT': gegen double `outhaz' = total(`refhaz') if(`refT'!=.)		// ! changed on 18JAN17, to reflect the S(t) change
@@ -1064,8 +1096,6 @@ qui{
 			ereturn scalar hazover = 1	//21DEC18 addition (to know when hazoverride's actually invoked, if specified)
 		}
 	}
-	
-	
 	if(`m_min'<0){
 		if("`hazoverride'"==""){
 			noi di _n as err "The outward transition hazards for one or more stages are summing to less than 0 when they typically should not."
@@ -1101,7 +1131,8 @@ qui{
 		gen double `refOverallSurv' = .
 		
 		// You need to loop over all the from stages.
-		// It's not the most efficient way of doing this, but just loop over all the unique pairs (just to eliminate possible sources of complication).
+		// It's not the most efficient way of doing this, but just loop over all 
+        // the unique pairs (to eliminate possible sources of complication).
 		foreach tr of local fromToPairsList{
 			putmata `mergeID' haz1=`outhaz1' if(`refFrTo'==`tr'), replace
 		
@@ -1109,7 +1140,6 @@ qui{
 		
 			getmata `refOverallSurv' = w, update id(`mergeID') double
 			mata: mata drop w haz1 `mergeID'	// cleanup
-		
 		}
 		drop `outhaz1' `mergeID'
 			
@@ -1137,7 +1167,7 @@ qui{
 	// * FIXEDH ADJUSTMENT HERE.
 	//	 You need to flip around the coding, similar to how a rechargeable battery works.
 	if("`fixedhorz'"!=""){
-		replace `refT' = abs(`tmax_inputted' - `refT')
+		replace `refT' = abs(`tMax_inputted' - `refT')
 		tempname moose
 		local frName = "`refFrom'"
 		local toName = "`refTo'"
@@ -1146,7 +1176,6 @@ qui{
 		rename	`moose' 	`toName'
 	}	
 	
-
 	tempname ref
 	putmata `ref' =(`refT' `refFrom' `refTo' `refOverallSurv' `refhaz'), omit replace
 	keep if `sorter'!=. 
@@ -1179,8 +1208,7 @@ qui{
 		
 	// The ALWAYS post file
 	cap postclose `postName'
-		//local freq = max(`tPoints',10)	// take the maximum number of time points per subject, and use that unless it's smaller than 10
-	postfile `postName' `simNo_outpt' `subj_outpt' `t_outpt' `stg_outpt' `flag_outpt' using `postFile', /*every(`freq')*/ replace
+	postfile `postName' `simNo_outpt' `subj_outpt' `t_outpt' `stg_outpt' `flag_outpt' using `postFile', replace
 
 		
 	// The post file that'll reset after every draw, for the big datasets	
@@ -1202,12 +1230,16 @@ qui{
 		`fullPost_draw'
 		
 		
-		// if 'gen' is specified, will also need a running stage file to append everything into.  That'll be tempfile stageAll.  Any adjustments you need to make have to be on the backend.)
+		// (If 'gen' is specified, will also need a running stage file to append 
+        // everything into.  That'll be tempfile stageAll.  Any adjustments you 
+        // need to make have to be on the backend.)
 	}
 	
 	noi di _n as gr "Simulations underway."
 		timer clear 76
 		timer on 76
+        // ^ needs to exist in order to give user the heads up about processing
+        //   times at the start of the processing stage
 	
 	mata: resFinal = .
 	mata: resFinalPath = .
@@ -1253,9 +1285,13 @@ qui{
 		local pathTrigger = `slicetrigger'	// how many path observations (which will be imperfect, because cannot tell how many path obsvs without opening the dataset.)
 												// To get at this, going with "overall / 5" for a rough, rough estimate (when this condition's checked by ifs)
 		
-		// Insert the slice and dice here, for instances where we'll have a super huge dataset with results.
-		* (also tell people that, if they want to save these results, we've had to write them to an outside dataset, just in case Stata goes bonko)
-		** Notice: this does presuppose that we can read in the path dataset without an issue.  If not, the previous "in case of emergency" save will be v. important
+		// Insert the slice and dice here, for instances where we'll have a 
+        // super huge dataset with results.
+		* (also tell people that, if they want to save these results, we've had 
+        * to write them to an outside dataset, just in case Stata goes bonko)
+		** Notice: this does presuppose that we can read in the path dataset 
+        ** without an issue.  If not, the previous "in case of emergency" 
+        ** save will be v. important
 
 		
 		// The eventual dataset size that'll trigger the slicing.
@@ -1312,9 +1348,7 @@ qui{
 			}
 		}
 		
-		
-		***************
-		
+		***************************************
 		// Start doing the processing
 		if("`speed'"==""){
 			// * If it's the old scenario, then go to work
@@ -1381,7 +1415,6 @@ qui{
 
 			// build list of variable names for the getmata
 			tempvar `gen'_Rslt_t 
-			
 			
 			local mataVarNames = `"``gen'_Rslt_t' "'
 			forvalues s = 1/`maxStage'{
@@ -1478,8 +1511,7 @@ qui{
 		} // stage forvalues loop
 	
 	if("`speed'"=="")	restore
-		
-		
+			
 	sort `sorter'
 	
 	// Display the non-integer fail message
@@ -1488,7 +1520,6 @@ qui{
 	
 	qui sum `intCheck'
 	if(`r(max)'>0){
-		
 		// message
 		noi di _n as ye "> NOTE: " as gr "You have possible transitions at non-integer failure times.  This does not affect how the simulations are executed."
 		noi di 	  as gr "The final results are also still correct, *but* they are reported in a more coarse way.  They can only be displayed with integer times."
@@ -1525,7 +1556,8 @@ qui{
 			}
 			
 			if("`speed'"==""){
-				// the stage datasets are always getting saved, regardless of what the user does if slicetrigger's met
+				// the stage datasets are always getting saved, regardless of 
+                // what the user does if slicetrigger's met
 				noi di _n as gr "  Relevant variable key for stage files in: " 
 				noi di as ye ///
 					_col(6) 	"`stageSliceDir'"	
@@ -1540,7 +1572,9 @@ qui{
 		if("`speed'"==""){
 			getmata `rsltOutput', double force		// Then, pull final output.  There really should never be a problem here.  The only real way is if the number of time points is obscene.
 				
-				// (just sticking in the caps to deal with the possibility that, even though you've requested stage output, it's not going to be there if overall > sliceTrigger)
+				// (just sticking in the caps to deal with the possibility that, 
+                // even though you've requested stage output, it's not going to 
+                // be there if overall > sliceTrigger)
 				// Label everything
 				** Raw
 				cap label variable `gen'_t 		"SIMS: t"
@@ -1632,8 +1666,7 @@ qui{
 end
 ********************************************************************************************************************************	
 // The entire simulate portion of the code, written in Mata
-
-
+***************************************
 mata:
 void _simMstate(			real scalar nSims,			// for number of total sims
 							real scalar nSubjs,			// for number of subjects
@@ -1665,8 +1698,6 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 							real matrix resFinalPath,	// HACK: to get Mata to save the exact transition times (since path is disabled w/speed)	(relevant only when speed==TRUE)
 							string pathSpeed			// string saying whether Mata should kick back the results with exact transition times		(relevant only when speed==TRUE)
 					  ){
-	
-	
 	// Declaring variables, in case someone has matastrict on
 	real scalar	 overall
 	real scalar  shoutOnce100 
@@ -1687,7 +1718,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 	real scalar  start 
 	real scalar  tv
 
-	
+	// If we've specified speed, declare additional objects
 	if(speed!=""){
 		real matrix res_mega		// MEANS: overall, across all sims
 		real matrix res				// MEANS: within each sim (will get overwritten a bunch, but stuck here so it's declared only once)
@@ -1723,15 +1754,14 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 			rmexternal(sprintf("spd_lb%f", stg_i))
 			ptrLB = crexternal(sprintf("spd_lb%f", stg_i))	 	// creates object named (in Stata code) spd_lb`i'
 			*ptrLB = J(bktSz,nTpts,0) 							// (size of bucket) x (# of time points)
-				// ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
+			  // ^ REMEMBER: This line's **ACTIVE**--it isn't commented out.  Since it always makes you look twice.
 		}
 	}
-	
 	
 	// Redo # of overall obsvs for stage output for sliceTrigger output
 	overall = nSubjs * nSims * (tMax_inputted-stime)		// don't need to add 1, because tMax passed to _simMstate is inputted tMax + 1.
 
-	
+    
 	// moved from old place right before "sim section" started, to reduce # of params passed
 	shoutOnce100 = 0
 	announce = nSims*nSubjs>10 ? floor(nSims*nSubjs/10) : nSims*nSubjs
@@ -1784,7 +1814,8 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 			if((c("processors")>1 & verbose=="") | terse!=""){					// if Stata MP
 				percComplete = ( ((simNo-1)*nSubjs)+subject)/(nSims*nSubjs)*100
 				
-				if(noiYN==1 & percComplete>0 & mod((((simNo-1)*nSubjs)+subject),announce)==0  & percComplete<100 ){
+				if(noiYN==1 & percComplete>0 & ///
+                   mod((((simNo-1)*nSubjs)+subject),announce)==0  & percComplete<100){
 					displayas("error")	
 					if(percComplete>=10)	printf("{res:%2.0f%%...}", percComplete)
 					else					printf("{res:%1.0f%%...}", percComplete)
@@ -1838,13 +1869,11 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 			
 				// ***** Hazsample, to get the next transition time			
 				tStar = _Hazsample(ref, t0, stgCurrent, fixedHorz)
-				
-				
+							
 				if(tStar!=.){	// (which is likely to be true--tStar will usually be a number, unless the subject stays put to the end --or-- if tMax is somewhat low, given the data's properties.)
 				
-					// check now to see if you're at the end of the time period; if not, pull a new stage
+					// [[check now to see if you're at the end of the time period; if not, pull a new stage]]
 					
-						
 					//* clock/gap acknowledgment
 					tHolder = tStar
 					if(clockType=="gap")	tHolder = tCurrent + tStar
@@ -1871,8 +1900,10 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 						absorb = 1
 					}
 		
-					
-					// if the subject's in an absorb (or if it's the end of the time period, which the above else takes care of), finish out the record.
+
+					// if the subject's in an absorb (or if it's the end of the 
+                    // time period, which the above else takes care of), finish 
+                    // out the record.
 					//** same behavior for both clock and gap
 					if(rows(obsvFrom[selectindex(obsvFrom[,1]:==stgCurrent),1])==0){	// It's a true absorbing stage 
 						absorb = 1
@@ -1911,8 +1942,8 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 			else{	// if we are, then write the results to res1 and be done with it			
 				res1[,stgCurrent] = res1[,stgCurrent] + (tptsSet:>=tCurrent :& tptsSet:<=max(tptsSet))
 				
-						// quick kludge to fix any rows with >1 values 
-						res1[,stgCurrent] = mm_cond(res1[,stgCurrent]:>1, 1, res1[,stgCurrent])
+                    // quick kludge to fix any rows with >1 values 
+                    res1[,stgCurrent] = mm_cond(res1[,stgCurrent]:>1, 1, res1[,stgCurrent])
 						
 				// then, post this subject to sim matrix
 				res = res + res1
@@ -1970,7 +2001,8 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 					ptrLB = findexternal(sprintf("spd_lb%f", stg_i))
 					
 					// I'd love to do this without sorting again.  But for now.			
-					// Would also love to do this in a way that's more readable.  Trying to go for speed, though, and thus, not creating extra objects.
+					// Would also love to do this in a way that's more readable.  
+                    // Trying to go for speed, though, and thus, not creating extra objects.
 					// So read your comments CAREFULLY
 					(*ptrLB)[bktSz, selectindex(res[.,stg_i]' :< (*ptrLB)[bktSz,])				// in the bucket matrix's last row...										
 							] = 																	// for the columns in which this sim's draw is less than the bucket's max
@@ -2000,14 +2032,12 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 				shoutOnce100 = 1
 			}
 			
-		
 			// *** DISPLAY MESSAGES ***
 			if( ( (c("processors")==1 & terse=="") | ((c("processors")>1 & verbose!="")) ) ){		// single core: display 'done' at end of each sim, via a period.
 				_stata(`"noi di as wh "done!""')
 			}
 		}
-		
-		
+
 	} // sim loop
 		
 	// Simulations now done: process.
@@ -2015,7 +2045,6 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 		// MEAN
 		res_mega = res_mega :/ nSims
 
-		
 		// CIs
 		for(stg_i=1; stg_i<=nStgs; stg_i++){	// loop over all the stage matrices, one last time
 			ptrLB = findexternal(sprintf("spd_lb%f", stg_i))
@@ -2100,19 +2129,24 @@ program path2stage
 		
 		qui sum `intCheck'
 		if(`r(max)'>0){
-			// If so, ceil() them, and keep the last transition that occurs in a particular unit interval (in case there are multiples)/.
-			// 		*Has* to be ceil, because if there's a transition in the start-stop interval (e.g.) (0.9,1], you want to know where the subject is *at the end of 1*
-			//		(i.e., the integer ending the interval (0,1]).  If you floor() it, that start-stop interval won't be grouped with the transitions occurring between 0-1,
-			//		as it should be, but instead, it'll be (incorrectly) grouped with the transitions on the interval (1,2].
-			
-			
-			// Also be sure to save a message for the user
+			// If so, ceil() them, and keep the last transition that occurs in a 
+            // particular unit interval (in case there are multiples)/.
+			// 		*Has* to be ceil, because if there's a transition in the 
+            //      start-stop interval (e.g.) (0.9,1], you want to know where 
+            //      the subject is *at the end of 1* (i.e., the integer ending 
+            //      the interval (0,1]).  If you floor() it, that start-stop 
+            //      interval won't be grouped with the transitions occurring 
+            //      between 0-1, as it should be, but instead, it'll be (incorrectly) 
+            //      grouped with the transitions on the interval (1,2].
+			//
+			// Also be sure to save a message for the user.
 			
 			// ceil it.
 			tempvar ceiled
 			gen `ceiled' = ceil(`t_outpt')  
 			
-				// If multiple transitions occur within a unit interval, keep the LAST observed transition only.
+				// If multiple transitions occur within a unit interval, keep 
+                // the LAST observed transition only.
 				bysort `simNo_outpt' `subj_outpt' `ceiled' (`t_outpt'): keep if(_n==_N)
 			
 			// message
@@ -2214,8 +2248,9 @@ cap program drop stage2counts
 program stage2counts
 {
 	syntax, Stages(string) Counts(string) TMAX(real) SIM(integer) [Append(string) FHORZ(string)]
-		// don't need to add anything fancy with conditions for append, because everywhere this function's called that 
-		// requires conditionality, the function itself's already called inside an if to enforce that conditionality
+		// don't need to add anything fancy with conditions for append, because 
+        // everywhere this function's called that requires conditionality, the 
+        // function itself's already called inside an if to enforce that conditionality
 		
 	local tmax = floor(`tmax')	// coerce into integer, if not already.	
 	
@@ -2224,11 +2259,14 @@ program stage2counts
 		
 		tempname simNo_outpt	subj_outpt	t_outpt	stg_outpt flag_outpt
 		
-		// The names are being dumb, because they're defined in the larger program locally, so they don't scope to here.  So, just manually rename to what you need.
+		// The names are being dumb, because they're defined in the larger 
+        // program locally, so they don't scope to here.  So, just manually 
+        // rename to what you need.
 		local counter = 1
 		local origNames = ""
 		foreach v of varlist *{
-			// create a list of the current varnames, because you'll have to reverse everything when you get to the bigger program.
+			// create a list of the current varnames, because you'll have to 
+            // reverse everything when you get to the bigger program.
 			local origNames = "`origNames' `v'"
 
 			if(`counter'==1){
@@ -2334,7 +2372,8 @@ mata:
 end
 ********************************************************************************************************************************	
 // The column independent sort function
-// Given a multicolumn matrix, sorts each of matrix's columns individually from low to high, as if they were mere colvectors
+// Given a multicolumn matrix, sorts each of matrix's columns individually from 
+// low to high, as if they were mere colvectors
 cap mata mata drop _colIndpSort()
 mata:
 	real matrix _colIndpSort(real matrix x)
@@ -2369,17 +2408,19 @@ real scalar _Hazsample(	real matrix info, 	 // has t, from, to, overallSurv
 	real colvector w
 	real scalar winner
 
-	// The matrix's rows are uniquely IDed by t-from-to triple.
+	// The matrix's rows are uniquely IDed by t-from-to triple. 
 	// For this sampling bit, we only need unique t-from pairs.
-	// Toss the duplicates from the t-from pairs by picking an arbitrary (but valid) to, given current stg and time
+	// Toss the duplicates from the t-from pairs by picking an arbitrary (but 
+    // valid) to, given current stg and time.
 	
-	// get correct time points and survivors for THIS transition --AND-- only keep rows for time greater than current
+	// get correct time points and survivors for THIS transition --AND-- only 
+    // keep rows for time greater than current
 	info2 = info[selectindex(info[,2]:==current), ] 	// current stage
 
-	
+
 	// if the matrix is empty, then there are no rows meeting the above criteria.
 	// That will happen if you are at tMax, and no transitions occur at that time.
-	// If this occurs, then simply return . and skip the rest of the function
+	// If this occurs, then simply return . and skip the rest of the function.
 	if(rows(info2)==0){
 		return(.)
 	}
@@ -2395,13 +2436,13 @@ real scalar _Hazsample(	real matrix info, 	 // has t, from, to, overallSurv
 		// OVERALL SURV
 		surv = info2[,4]
 		
-		//  Get the difference, *then* subset those greater than current time.  *Then* sample.
+		// Get the difference, *then* subset those greater than current time.  *Then* sample.
 		if(fixedh!="") {
 			w = (info2[,5] \ (1-colsum(info2[,5])))
 		}
 		else {
 			w = diff(1 :- surv) \ (1-colsum(diff(1 :- surv)))	
-		}												// notice: b/c of surv's inclusion as last weight, there should never be an instance where all the weights are now zero.
+		}				// ^ notice: b/c of surv's inclusion as last weight, there should never be an instance where all the weights are now zero.
 		
 		// Temp rejoin for the subset for convenience
 		info2 = (tm, w)
@@ -2410,7 +2451,6 @@ real scalar _Hazsample(	real matrix info, 	 // has t, from, to, overallSurv
 		// Sample it.
 		winner = mm_upswr(1, info2[,2] , 1)		// 2nd arg = weights matrix, with the survival probability appended at the end for the no transition/stays put instance.
 
-		
 		// Return winner (t*)
 		return(info2[selectindex(winner),1])
 	}
@@ -2474,7 +2514,6 @@ void _postMe(	real scalar sim,	// simNo
 end
 ********************************************************************************************************************************
 // postMe: Stata command, to be called within Mata function _postMe(), for posting things.
-* takes the 
 program postMe
 {
 	syntax, Name(string) PName(string)
@@ -2491,7 +2530,8 @@ program postMe
 }
 end
 ********************************************************************************************************************************
-// tidy: Program to be called for housekeeping.  Tosses any extra observations created by command, in the early going.
+// tidy: Program to be called for housekeeping.  Tosses any extra observations 
+//       created by command, in the early going.
 * (Written in case I eventually realize there are other things that need tidied.)
 program tidy
 {
@@ -2509,7 +2549,8 @@ program tidy
 }
 end
 ********************************************************************************************************************************
-// covarFill: To be called within mstsample, specifically while setting covariate values for the haz gen.
+// covarFill: To be called within mstsample, specifically while setting 
+//            covariate values for the haz gen.
 program covarFill, sortpreserve
 {			
 	args matrix matMeans x pairings covarNames 
