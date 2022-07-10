@@ -651,7 +651,7 @@ qui{
 			// No longer needed, because preserve will restore things
 			// Reset the stset to the original thing (i.e., without the id() from stsplit, if there was no ID to start with)
 
-			* time (or else will show up as _t when you stset, which isn't helpful)
+                * time (or else will show up as _t when you stset, which isn't helpful)
 				local st_t:			char _dta[st_bt]
 				
 				* failure
@@ -1548,6 +1548,9 @@ qui{
 			noi di as gr "done."
 			noi di ""
 		}
+        
+        // Compress here, to prevent datasig issues
+        compress `gen'_*
 	}
 	
 	// Cleanup
@@ -1592,6 +1595,7 @@ qui{
 		
 		noi di as gr "done."
 		noi di ""
+        compress `path'_*
 	}
 	} // end of convenience collapse for result 
 	
@@ -1599,7 +1603,6 @@ qui{
 	mat drop `skm_b'
 	if(`overall'>`slicetrigger' & `mataSv'==0 & `pathTrigger'!=1)	cap qui erase "`jicFile'.dta"
 	if(`overall'>`slicetrigger' & `mataSv'!=0)	cap mata: mata drop ms_pathOutput
-	compress
 	
 	if("`dzone'"!="")	ereturn local datasignature "" // !! DANGER.  Resetting the data signature to what it was before you started mstsamp.
     
@@ -2157,9 +2160,9 @@ program path2stage
 			
 			local `counter++'
 		}
-		compress
-		save "`stages'", replace
-		
+        //compress        // would like to be able to compress here, but would be too much hassle, long story short.
+        save "`stages'", replace
+        
 		if("`append'"!=""){
 			if(`sim'>1)		append using `append'
 			save `append', replace
@@ -2566,7 +2569,7 @@ program covarDemean, sortpreserve
 			}
 		}
 	
-	compress
+	compress `newX'
 	
 } // for bracket collapse in editor
 end
