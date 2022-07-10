@@ -52,7 +52,7 @@
 {synopt :{opt ci(cilevel)}}confidence level to report in output, default = {bf:c(level)}{p_end}
 
 {syntab: Simulation Progress}
-{synopt : {opt ver:bose}}gives percent complete for each simulation pull, default for single-core machines{p_end}
+{synopt : {opt ver:bose}}gives percent complete for each simulation draw, default for single-core machines{p_end}
 {synopt : {opt ter:se}}gives percentage of simulations complete, overall, default for multi-core machines{p_end}
 
 {syntab: Speed}
@@ -184,7 +184,7 @@ We suggest you specify a value here, because your dataset may have extreme/outli
 
 {dlgtab:Simulation Progress}
 
-{phang}{opt ver:bose} noisily outputs, for each simulation pull, the pull's completion percentage:{p_end}
+{phang}{opt ver:bose} noisily outputs, for each simulation draw, the draw's completion percentage:{p_end}
 	{pmore2}#1    0%...10%...20%...30%...40%...50%...60%...70%...80%...90%...100%...done! {break}
     #2    0%...10%...20%...30%...40%...50%...60%...70%...80%...90%...100%...done! {break}
     #3    0%...10%...20%...30%...40%...50%...60%...70%...80%...90%...100%...done! {break}
