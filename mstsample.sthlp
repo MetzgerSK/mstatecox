@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 09apr2019}{...}
+{* *! version 27jun2022}{...}
 {viewerjumpto "Syntax" "mstsample##syntax"}{...}
 {viewerjumpto "Description" "mstsample##description"}{...}
 {viewerjumpto "Options" "mstsample##options"}{...}
@@ -29,7 +29,7 @@
 {p 4 16 2}
 {hi:mstsample}{cmd:,} {opt ss:tage(integer)} {opt st:ime(integer)} 
 					[{opt n(integer)} {opt sims:(integer)} {opt tm:ax(integer)} {opt gap:} {opt hazo:verride}
-					 {opt gen(newvarstub)} {opt path(newvarstub2)} {opt ci(integer)} {opt ver:bose} {opt ter:se} 
+					 {opt gen(newvarstub)} {opt path(newvarstub2)} {opt ci(cilevel)} {opt ver:bose} {opt ter:se} 
 					  {opt speed} {opt msfit} {opt slice:trigger(integer)} {opt dir(path)}]
 
 {synoptset 20 tabbed}{...}
@@ -49,7 +49,7 @@
 {syntab:Reporting}
 {synopt :{opt gen(newvarstub)}}generate results variables beginning with {it:newvarstub} for each simulation-time point pairing{p_end}
 {synopt :{opt path(newvarstub2)}}generate results variables beginning with {it:newvarstub2} containing the each subject's path in every simulation{p_end}
-{synopt :{opt ci(integer)}}confidence level to report in output, default is 95{p_end}
+{synopt :{opt ci(cilevel)}}confidence level to report in output, default = {bf:c(level)}{p_end}
 
 {syntab: Simulation Progress}
 {synopt : {opt ver:bose}}gives percent complete for each simulation pull, default for single-core machines{p_end}
@@ -180,7 +180,7 @@ We suggest you specify a value here, because your dataset may have extreme/outli
 {phang}{opt path(newvarstub2)} will generate variables beginning with {it:newvarstub2} containing the specific transition sequences for every subject from every simulation ("paths").  
 					The default is to report nothing and save nothing.{p_end}
 
-{phang}{opt ci(integer)} specifies the confidence level for the simulation output.  The default value is 95, for a 95% confidence interval.{p_end}
+{phang}{opt ci(cilevel)} specifies the confidence level for the simulation output.  The default value is {bf:c(level)}.  The option's permissible values are governed by {manhelp level R}'s conventions.{p_end}
 
 {dlgtab:Simulation Progress}
 

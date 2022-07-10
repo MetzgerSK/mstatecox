@@ -34,7 +34,7 @@ local noiYN = `c(noisily)'	// Did user specify qui?  (Must do here b/c if you qu
 
 qui{
 	syntax , SStage(integer) STime(integer)  [N(integer 10) SIMS(integer 1) TMax(integer 0) ///
-											  GEN(string) CI(integer 95) GAP HAZOVerride ///
+											  GEN(string) CI(cilevel) GAP HAZOVerride ///
 											  PATH(string) TERse VERbose MSFIT SLICEtrigger(integer 250000000) ///
 											  SPEED DIR(string) SEYes ///
                                               DEM_debug]
