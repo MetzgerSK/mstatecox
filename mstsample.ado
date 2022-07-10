@@ -1390,7 +1390,7 @@ qui{
 					local tPoints = `r(J)'
 			}
 			if("`bforce'"!="")		local stObsv = `tPoints' - 1
-			noi list ``gen'_Rslt_t' ``gen'_Rslt_stage`s'_m' ``gen'_Rslt_stage`s'_lb' ``gen'_Rslt_stage`s'_ub' in `stObsv'/`tPoints' if(``gen'_Rslt_t'<=`tMax_inputted'), noobs sep(`tPoints') subvar ab(`spacing')
+			noi list ``gen'_Rslt_t' ``gen'_Rslt_stage`s'_m' ``gen'_Rslt_stage`s'_lb' ``gen'_Rslt_stage`s'_ub' in `stObsv'/`tPoints' if(``gen'_Rslt_t'<=`tMax_inputted'), noobs sep(`tPoints') subvar ab(`spacing') table
 			
 			// If frailty present, but no value specified, make note about frailty
 			// being set to 0
