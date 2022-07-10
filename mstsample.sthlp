@@ -172,13 +172,29 @@ We suggest you specify a value here, because your dataset may have extreme/outli
 
 {dlgtab:Reporting}
 
-{phang}{opt gen(newvarstub)} will generate variables beginning with {it:newvarstub} containing the simulation results for the stage output and for each simulation-time point pairing.  The default is to calculate each time point's mean and CIs
-								across all the simulations, and report these quantities in the Results window without generating any variables for 
-								the stage output or the final results.{p_end}
-								{pmore}If the {opt slicetrigger} condition is met, Stata will save the stage output to an external dataset.{p_end}
-								
-{phang}{opt path(newvarstub2)} will generate variables beginning with {it:newvarstub2} containing the specific transition sequences for every subject from every simulation ("paths").  
-					The default is to report nothing and save nothing.{p_end}
+{phang}{opt gen(newvarstub)} will generate variables beginning with {it:newvarstub} containing the simulation results for the stage output and for each simulation-time point pairing.  The general naming conventions are:{p_end}
+	{p 10 12 2}{ul:Stage Output} ("SIMS" variable label prefix){break}
+				- {it:newvarstub}_t: time point{break}
+				- {it:newvarstub}_simNm: simulation number{break}
+				- {it:newvarstub}_stage#: % of subjects in the stage at {it:newvarstub}_t{p_end}
+	{p 10 12 2}{ul:Processed Results} ("RESULTS" variable label prefix){break}
+				- {it:newvarstub}_Rslt_t: time point{break}
+				- {it:newvarstub}_Rslt_stage#_m: mean{break}
+				- {it:newvarstub}_Rslt_stage#_lb: CI's lower bound{break}
+				- {it:newvarstub}_Rslt_stage#_ub: CI's upper bound{p_end}
+	{pmore}The default is to generate no variables of any kind.  Each time point's mean and CIs
+		   across all the simulations are printed to the Results window only.{p_end}
+	{pmore}If the {opt slicetrigger} condition is met, Stata will save the stage output to an external dataset.{p_end}
+	{pmore}If the {opt speed} option is specified, the stage output variables are not generated.  It is impossible to do so with the information {opt speed} keeps in memory.{p_end}
+	
+{phang}{opt path(newvarstub2)} will generate variables beginning with {it:newvarstub2} containing the specific transition sequences for every subject from every simulation ("paths").  The general naming conventions are:{p_end}
+	{p 10 12 2}{ul:Path Output} ("PATH" variable label prefix){break}
+				- {it:newvarstub2}_simNm: simulation number{break}
+				- {it:newvarstub2}_id: subject ID{break}
+				- {it:newvarstub2}_t: time point{break}
+				- {it:newvarstub2}_stage: stage ID{p_end}
+	{pmore}The default is to report nothing and save nothing regarding paths.{p_end}
+	{marker pathSpeedClash}{...}{pmore}It is impossible to recover information about paths if {opt speed} is specified.  {cmd:mstsample} will throw an error if both {opt speed} and {opt path()} are present.{p_end}
 
 {phang}{opt ci(cilevel)} specifies the confidence level for the simulation output.  The default value is {bf:c(level)}.  The option's permissible values are governed by {manhelp level R}'s conventions.{p_end}
 
@@ -205,7 +221,7 @@ output is processed, NOT how the simulations themselves are executed (which rema
 {pmore}If you specify {opt speed}, {cmd:mstsample} ignores all of your {help mstsample##trigger:memory management options}.{p_end}
 
 {pmore}If you specify {opt gen()} with {opt speed}, {cmd:mstsample} will only save variables with the final processed simulation results ({opt gen()} variables with "RESULTS: *" labels).
-It will not save variables with each simulation-subject-time point triplet ({opt gen()} variables with "SIMS: *" labels).{p_end}
+It will not save variables with each simulation-subject-time point triplet ({opt gen()} variables with "SIMS: *" labels).  {opt path()} is an {help mstsample##pathSpeedClash:impermissible option} with {opt speed}.{p_end}
 
 {dlgtab:Troubleshoot}
 
