@@ -230,37 +230,8 @@ qui{
 	
 	if(`overall'>`slicetrigger' & "`gen'"!="" & "`speed'"==""){
 		// Create directory name for JIC export.
-			// Today's date, in ddMMMyy form
-				//day
-				local day = word("`c(current_date)'", 1)
-				local length = length("`day'")
-				if(`length'==1){							//add a 0 if the date is one digit
-					local day = "0`day'"
-				}	
-				
-				//month
-				local month = word("`c(current_date)'", 2)	// get corresp Aaa abbreviation
-				local month = upper("`month'")				// capitalize so it's AAA
-
-				//year (2-digit)
-				local year = word("`c(current_date)'", 3)
-				local year = substr("`year'",-2,.) 
-				
-			local date = "`day'`month'`year'"
-			****************************************
-			// filename without the dta
-			local fName = strtoname(substr("`c(filename)'",1,length("`c(filename)'")-4))
-			****************************************
-			// Current time
-			local fTime = subinstr("`c(current_time)'",":","",.)
-			****************************************
-			// Random digits, jic
-			local rand = runiformint(0,10000)
-		
-		local folderName = "`fName'_`date'_`fTime'_`rand'"
-			// it's already highly unlikely there'll be a naming conflict, but esp.
-            // with the addition of "rand".  (...though if they're setting seed,
-            // "rand" won't be so random.  Hopefully, the time portion will be enough.)
+        jicFileNm
+        local folderName = subinstr("`r(fileNm)'", "path_", "", .)
 		
 		// See if pwd is writable
 		cap mkdir "`folderName'"
@@ -1297,36 +1268,9 @@ qui{
 		// The eventual dataset size that'll trigger the slicing.
 		if(`overall'>`slicetrigger' & "`speed'"==""){
 			// Create file name for JIC export.
-				// Today's date, in ddMMMyy form
-					//day
-					local day = word("`c(current_date)'", 1)
-					local length = length("`day'")
-					if(`length'==1){							// add a 0 if the date is one digit
-						local day = "0`day'"
-					}	
-					
-					//month
-					local month = word("`c(current_date)'", 2)	// get corresp Aaa abbreviation
-					local month = upper("`month'")				// capitalize so it's AAA
-
-					//year (2-digit)
-					local year = word("`c(current_date)'", 3)
-					local year = substr("`year'",-2,.) 
-					
-				local date = "`day'`month'`year'"
-				****************************************
-				// filename without the dta
-				local fName = strtoname(substr("`c(filename)'",1,length("`c(filename)'")-4))
-				****************************************
-				// Current time
-				local fTime = subinstr("`c(current_time)'",":","",.)
-
-				// And just to absolutely ENSURE this is a unique name
-				tempname closer
-				
-			local jicFile = "path_`fName'_`date'_`fTime'`closer'"
+            jicFileNm
+			local jicFile = "`r(fileNm)'"
 	
-			
 			// Make sure you can save things here
 			cap copy "`postFile'" "`jicFile'.dta"
 			
@@ -1334,7 +1278,7 @@ qui{
 				local locStr = "in your present working directory."
 			}
 			else{
-				cap copy "`postFile'" "`c(sysdir_personal)'\`jicFile'.dta"
+				cap copy "`postFile'" "`c(sysdir_personal)'/`jicFile'.dta"
 				local locStr = "in `c(sysdir_personal)'. (Stata could not save to your present working directory.)"
 			}
 			
@@ -2629,5 +2573,47 @@ program covarDemean, sortpreserve
 	
 	compress `newX'
 	
+} // for bracket collapse in editor
+end
+********************************************************************************************************************************
+// Create JIC file name
+cap prog drop jicFileNm
+prog define jicFileNm, rclass
+{
+    // Today's date, in ddMMMyy form
+        //day
+        local day = word("`c(current_date)'", 1)
+        local length = length("`day'")
+        if(`length'==1){							// add a 0 if the date is one digit
+            local day = "0`day'"
+        }	
+        
+        //month
+        local month = word("`c(current_date)'", 2)	// get corresp Aaa abbreviation
+        local month = upper("`month'")				// capitalize so it's AAA
+
+        //year (2-digit)
+        local year = word("`c(current_date)'", 3)
+        local year = substr("`year'",-2,.) 
+        
+    local date = "`day'`month'`year'"
+    ****************************************
+    // filename without the dta
+    * get fName only first (easiest to do in Mata)
+    tempname tkns
+    mata: `tkns' = tokens("`c(filename)'","\/")
+    * throw back to Stata
+    mata: st_local("fName", subinstr(`tkns'[cols(`tkns')], ".dta", "", .))
+    local fName = strtoname("`fName'")
+    mata: mata drop `tkns'
+    ****************************************
+    // Current time
+    local fTime = subinstr("`c(current_time)'",":","",.)
+
+    // And just to absolutely ENSURE this is a unique name
+    tempname closer
+    return local fileNm "path_`fName'_`date'_`fTime'`closer'"
+    return local date "`date'"
+    
 } // for bracket collapse in editor
 end
