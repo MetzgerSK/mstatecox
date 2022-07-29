@@ -191,7 +191,7 @@ provided you save the results to the dataset.  Here, {helpb mstdraw} is an optio
 
 {pstd}Singer, Judith D., and John B. Willett.  2003.  {it:Applied Longitudinal Data Analysis: Modeling Change and Event Occurrence}.  Oxford: Oxford University Press.{p_end}
 
-{pstd}de Wreede, Liesbeth C. de, Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
+{pstd}de Wreede, Liesbeth C., Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
 	 {it:Computer Methods and Programs in Biomedicine} 99 (3): 261–274.{p_end}
 
 

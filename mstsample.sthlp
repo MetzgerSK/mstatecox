@@ -489,7 +489,7 @@ enforcing the {opt hazoverride} option, if specified.{p_end}
 {pstd}Metzger, Shawna K., and Benjamin T. Jones.  2018.  "mstatecox: A Package for Simulating Transition Probabilities from Semiparametric Multistate Survival Models."  
 {it:Stata Journal} 18 (3): 533–563.{p_end}
 		
-{pstd}de Wreede, Liesbeth C. de, Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
+{pstd}de Wreede, Liesbeth C., Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
 	 {it:Computer Methods and Programs in Biomedicine} 99 (3): 261–274.{p_end}
 
 

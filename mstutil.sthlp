@@ -134,7 +134,7 @@ and Metzger 2018, Supplemental Appendix A; de Wreede, Fiocco, and Putter 2010).
 
 {pstd}Jones, Benjamin T., and Shawna K. Metzger.  2018.  "Evaluating Conflict Dynamics: A Novel Empirical Approach to Stage Conceptions."  {it:Journal of Conflict Resolution} 62 (4): 819-847. {p_end}
 
-{pstd}de Wreede, Liesbeth C. de, Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
+{pstd}de Wreede, Liesbeth C., Marta Fiocco, and Hein Putter.  2010.  "The mstate Package for Estimation and Prediction in Non- and Semi-Parametric Multi-State and Competing Risks Models."  
 	 {it:Computer Methods and Programs in Biomedicine} 99 (3): 261–274.{p_end}
 
 
