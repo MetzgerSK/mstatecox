@@ -444,8 +444,8 @@ qui{
         local frVal = "$mstcovar_lFr"
         local frNote = ""
         if("`frVal'"==""){
-            local frVal = 0	    // if no log-frailty given, set to 0
-            local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+            local frVal = 0	        // if no log-frailty given, set to 0
+            local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample} (implies frailty = 1)."	// populate the end-of-estm FYI message
         }
     }
     // If no frailty, frVal=0
@@ -502,14 +502,6 @@ qui{
                 local reest_shtct = ""
             }
 			local reest_tr = ""	// no strata currently possible if frailty term present.
-			
-            * get frailty value
-			local frVal = "$mstcovar_lFr"
-			local frNote = ""
-			if("`frVal'"==""){
-				local frVal = 0	// if no log-frailty given, set to 0
-				local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
-			}
 
             // If we're doing it the long way, give user an apology message
             if("`seyes'"!=""){
@@ -1409,18 +1401,6 @@ qui{
 			}
 			if("`bforce'"!="")		local stObsv = `tPoints' - 1
 			noi list ``gen'_Rslt_t' ``gen'_Rslt_stage`s'_m' ``gen'_Rslt_stage`s'_lb' ``gen'_Rslt_stage`s'_ub' in `stObsv'/`tPoints' if(``gen'_Rslt_t'<=`tMax_inputted'), noobs sep(`tPoints') subvar ab(`spacing') table
-			
-			// If frailty present, but no value specified, make note about frailty
-			// being set to 0
-			if("`frNote'"!=""){
-				noi di _n as gr "`frNote'"
-				noi di ""
-			}
-			// Ditto if offset present, but no value specified.
-            if("`offNote'"!=""){
-				noi di _n as gr "`offNote'"
-				noi di ""
-			}
             
 			// If the user wants the vars in memory, create them.
 			if(`keepHolders'==1){
@@ -1471,7 +1451,19 @@ qui{
 			} // if for keeping vars
 
 		} // stage forvalues loop
-	
+				
+        // If frailty present, but no value specified, make note about frailty
+        // being set to 0
+        if("`frNote'"!=""){
+            noi di _n as gr "`frNote'"
+            noi di ""
+        }
+        // Ditto if offset present, but no value specified.
+        if("`offNote'"!=""){
+            noi di _n as gr "`offNote'"
+            noi di ""
+        }
+            
 	if("`speed'"=="")	restore
 			
 	sort `sorter'
