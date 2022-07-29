@@ -432,13 +432,25 @@ qui{
         local frVal = "$mstcovar_lFr"
         local frNote = ""
         if("`frVal'"==""){
-            local frVal = 0	// if no log-frailty given, set to 0
+            local frVal = 0	    // if no log-frailty given, set to 0
             local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
         }
     }
     // If no frailty, frVal=0
     else    local frVal = 0   
-            
+    
+    // Get offset value
+    if("`e(offset)'"!=""){
+        local offVal = "$mstcovar_offset"
+        local offNote = ""
+        if("`offVal'"==""){
+            local offVal = 0	// if no offset given, set to 0
+            local offNote "> No offset value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+        }
+    }    
+    // If no offset value set, offVal=0
+    else    local offVal = 0
+    
 	// NON-PARAMETRIC 
 	if(colsof(`skm_b')==0){
 		* BASELINE HAZARD 
@@ -633,7 +645,7 @@ qui{
 				
 				// Get the final prediction for H0.
 				tempvar pieces H
-				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal') 
+				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal'+`offVal') 
 				bysort `from' `to' (_t): gen `H' = sum(`pieces')
 				gduplicates drop _t `from' `to', force
 				keep _t `from' `to' `H'
@@ -716,10 +728,10 @@ qui{
 			tempvar xbTIV
 			matrix sco double `xbTIV' = `skm_b', eq("main") 
 
-			* combine w/frailty (if present) into the HR.
+			* combine w/frailty and/or offset (if present) into the HR.
 			cap drop `hr'
 			tempvar hr
-			gen double `hr' = exp(`xbTIV'+`frVal')
+			gen double `hr' = exp(`xbTIV'+`frVal'+`offVal')
 
 			* insert the prediction-to-matrix conversion here before the restore
 			cap drop `hrMat'
@@ -781,7 +793,7 @@ qui{
 		bysort `trans' (_t): gen double `naH' = sum(`intermed')
 		
 		// 21FEB19 mod - keep in H0 form
-		replace `H0' = `naH'*exp(`frVal')
+		replace `H0' = `naH'*exp(`frVal')*exp(`offVal')
 		
 		cap drop `stshaz'
 		cap drop `intermed'
@@ -1409,7 +1421,12 @@ qui{
 				noi di _n as gr "`frNote'"
 				noi di ""
 			}
-			
+			// Ditto if offset present, but no value specified.
+            if("`offNote'"!=""){
+				noi di _n as gr "`offNote'"
+				noi di ""
+			}
+            
 			// If the user wants the vars in memory, create them.
 			if(`keepHolders'==1){
 				if(`s'==1){
