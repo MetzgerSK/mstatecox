@@ -32,7 +32,8 @@ qui{
 	noi di ""
 	noi di as gr _col(16) "You should be using this workaround only if:"
 	noi di as gr _col(24) "(a) {bf:stcox} is taking a while to run with {bf:tvc()}/{bf:texp()} specified; and"
-	noi di as gr _col(24) "(b) you are adept with Cox models, and understand how to {bf:stsplit} stratified data and generate the subsequent interaction terms properly."
+	noi di as gr _col(24) "(b) you are adept with Cox models, and understand how to {bf:stsplit} stratified" 
+    noi di as gr _col(24) "    data and generate the subsequent interaction terms properly."
     
 	// Preserve any results in return list
     tempname retPres
@@ -86,13 +87,13 @@ qui{
 		if(`found'==0){
 			cap gen double msttvc_`v'TVC = ``v'TVC'
 			if(_rc!=0){
-				local rand = runiformint(0,10000)
-				cap gen double msttvc_`v'TVC`rand' = `v'`TVC'
+				tempname sufx
+				cap gen double msttvc_`v'TVC`sufx' = `v'`TVC'
 				
 				if(_rc!=0)	local noGen = "Could not save {bf:msttvc}'s generated interaction term to the dataset due to a name conflict."
 			}
 			noi di as err "No covariate found for `v''s interaction with `texp'."
-			if("`noGen'"=="") 	noi di as err "{bf:msttvc}'s generated interaction term saved as " as ye "msttvc_`v'TVC`rand'" as re "."
+			if("`noGen'"=="") 	noi di as err "{bf:msttvc}'s generated interaction term saved as " as ye "msttvc_`v'TVC`sufx'" as re "."
 			else				noi di as err "`noGen'"
 			noi di as err "Please check the model's included covariates and try again."
 			
@@ -141,8 +142,9 @@ qui{
 	
 	// success message
 	noi di _n as gr "{bf:msttvc} successful."
-	noi di as ye " > NOTE: " as gr "{bf:msttvc} currently breaks Stata's ability to report stcox in hazard ratios **correctly**.  {bf:mstsample} is unaffected." 
-	noi di as gr "         If you need HRs, either replay the current stcox estimates with {bf:nohr} or reestimate the model entirely."
+	noi di as ye " > NOTE: " as gr "{bf:msttvc} currently breaks Stata's ability to report stcox in hazard ratios **correctly**.  {bf:mstsample} is unaffected," 
+	noi di as gr "         as are the untransformed coefficients if you replay the current stcox estimates with {bf:nohr}.  If you need HRs, reestimate "
+    noi di as gr "         the model entirely later."
 	noi di ""
     
     // Overwrite whatever's in tvc() and texp()
