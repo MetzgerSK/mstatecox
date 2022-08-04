@@ -95,7 +95,7 @@ You may want to override an existing list if you previously entered the list inc
 	for {it:varname}, compare {it:varname}'s new list to {it:varname}'s list in memory, see the two are not the same, and throw an error.{p_end}  
 {pmore}As a corollary, for convenience, you could enter the same list of covariates over and over again in {bf:names()} {it:without} specifying {bf:replace}, since there are no differences between your 'new' list and the list in memory.{p_end}
 	
-{phang}{opt fr:ailty} signifies that the specified {opt value()} is for the log-frailty term (also known as the random effect).  
+{phang}{opt fr:ailty} signifies that the specified {opt value()} is for the log-frailty term (also known as the random effect), which is added to the linear combination (XB + log-frailty).  
 The log-frailty = {opt value()} implies that the frailty = exp({opt value}).  If no log-frailty value is set by {cmd:mstcovar}, {cmd:mstsample} will automatically set the log-frailty to 0, the log-frailty's mean.  
 If you specify {opt frailty} but also give a {cmd:tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.  
 If you specify both {opt frailty} and {opt offset} in one {cmd:mstcovar} call, {cmd:mstcovar} will throw an error.{p_end}
@@ -142,7 +142,6 @@ If {opt esample} is specified, {cmd:tabstat} computes the requested statistic us
 {phang2}{cmd:. mstcovar tumsize, n(tumsize_tr1 tumsize_tr2) v(max)}{p_end}
 {phang2}{cmd:. mstcovar pelnode, n(pelnode_tr1 pelnode_tr2) v(mean) esample}{p_end}
 {phang2}{cmd:. mstcovar}{p_end}
-
 
 {p 6 6 2}{it:You decide to estimate only one effect for tumsize, and also want to set pelnode to its median value.}{p_end}
 {phang2}{cmd:. mstcovar tumsize, n(tumsize) v(max)}{p_end}
