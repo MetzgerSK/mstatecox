@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 27jun2022}{...}
+{* *! version 29jul2022}{...}
 {viewerjumpto "Syntax" "mstsample##syntax"}{...}
 {viewerjumpto "Description" "mstsample##description"}{...}
 {viewerjumpto "Options" "mstsample##options"}{...}
@@ -234,9 +234,13 @@ It will not save variables with each simulation-subject-time point triplet ({opt
 - Transition-specific survivor (S_q(t)) {break}
 - Transition-specific hazard (h_q(t); a_q(t) in the multi-state literature) {break}
 - Transition-specific cumulative hazard (H_q(t); A_q(t) in the multi-state literature) {break}
-- Outward transition hazard for a stage (sum of all the transition-specific hazards starting *from* that particular stage){p_end}
+- Outward transition hazard for a stage (sum of all the transition-specific hazards starting *from* that particular stage) {break}
+- Survivor for a stage, if all subjects hypothetically started in that stage (S_stg(t))*{p_end}
+{p 14 14 2}* {it:Not present if {cmd:mstsample} exits with a {opt hazoverride}-related error.}{p_end}
+  
+{pmore}The outward transition hazards are discussed further above, in the context of {bf:hazoverride}.{p_end}
 
-{pmore}The outward transition hazards are discussed further above, in the context of {bf:hazoverride}.
+{pmore}S_q(t) may not be identical to S_stg(t) in a one-transition model.  S_stg(t) is calculated as the product-limit estimate of the stage's outward transition hazard, whereas S_q(t) = exp(-H_q(t)).{p_end}
 
 {pmore}After running {bf:mstsample}, view this matrix by typing {bf:matrix list tShoot_mstate}.  The matrix is akin to what R-mstate's msfit command outputs, hence the option's name.{p_end}
 
@@ -292,7 +296,7 @@ for a particular simulation draw.  For instance:{p_end}
 		1	3	60	1 
 	{pstd} We see the first subject begins in Stage 1 at t = 0.  It then transitions into Stage 2 at t = 17.  It is still in Stage 2 at t = 60—the end time for this hypothetical simulation.  
 			The second subject starts in Stage 1, transitions into Stage 2 at t = 4, and then stays there until t = tmax = 60; 
-			and both subjects 3 and 4 never transition out of Stage 1 at all. {p_end}
+			and subject 3 never transition out of Stage 1 at all. {p_end}
 	{pstd}
 The result processing section takes this "path" output and converts it into "stage" output, with one row for every simulation number-subject 
 pairing, for every integer time point in (stime,tmax] (in multi-state parlance: (s,t]).  For the previous example, for the first two subjects, there would be 122 total observations: {p_end}
@@ -338,7 +342,7 @@ Once all the simulation draws are complete, it then converts all the path output
 
 {pstd}  If Stata throws any kind of error
 during the result processing section, {it:all} your simulation results may be lost.  In some cases, {cmd:mstsample} does try to save an "emergency" version of your path output to your present working
-directory before it begins processing to help stave off this precise situation, but it would be best to avoid the situation entirely. {p_end}
+directory before it begins processing to help stave off this precise situation, but it would be best to avoid the possibility entirely. {p_end}
 
 {pstd}{bf:slicetrigger}'s result processing routine addresses this issue head on.  Instead of collecting all of the path data to process at once, it processes the data "on the fly"--that is, at the end
 of every simulation draw.  The path output's number of observations is smaller than the stage output by several orders of magnitude, giving Stata a much easier task. {p_end}
@@ -490,6 +494,6 @@ enforcing the {opt hazoverride} option, if specified.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 28FEB19
+{bf:Last Updated} - 29JUL22
 {p_end}
 
