@@ -727,7 +727,7 @@ qui{
 		
 			// you do still need this.  It's filling in the variable's value to the dataset for pred.
 			foreach x of local names{
-				covarFill `xvals' mstcovarVals_means `x' `trans' "`namesB'"
+				covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
 			}
 				
 			// Generate linear combo
@@ -764,8 +764,8 @@ qui{
 					local mrg = 1
 					
 					tempfile stuff
-					gduplicates drop _t `trans', force
-					keep _t `trans' `hr' `s0'
+					gduplicates drop _t `from' `to', force
+					keep _t `from' `to' `hr' `s0'
 					save `stuff', replace
 					
 					local mrgSize = `c(N)'
@@ -781,8 +781,8 @@ qui{
 		}
 		else{				// everything did not fit; merge.
 			tempvar merge
-			if(`mrgSize' < 100000)	merge _t `trans' using `stuff', sort uniqusing nokeep _merge(`merge')
-			else					join * , from(`stuff') by(_t `trans') keep(1 3) generate(`merge')			// on the off chance this helps save time
+			if(`mrgSize' < 100000)	merge _t `from' `to' using `stuff', sort uniqusing nokeep _merge(`merge')   // has to be by from-to pairings, b/c trSp covars (but collapsed strata) might merge incorrectly
+			else					join * , from(`stuff') by(_t `from' `to') keep(1 3) generate(`merge')		// on the off chance this helps save time
 					
 			drop `merge'
 		}
@@ -931,10 +931,10 @@ qui{
 		// keep any of the unique failure times
 		tempvar failTPt trFailTime HazMax
 		bysort _t (`thePairings'): gegen `failTPt' = max(_d)
-		bysort `thePairings' _t: gegen byte `trFailTime' = max(_d)			// to be aware of whether the transition actually has failure at that time
-		bysort `thePairings' _t: gegen double `HazMax' = max(`Haz')
+		bysort `thePairings' _t: gegen byte `trFailTime' = max(_d)			// to be aware of whether the pairing actually has failure at that time
+		bysort `thePairings' _t: gegen double `HazMax' = max(`Haz')         // needs to be thePairings b/c of poss trSp covar effects
 			replace `Haz' = `HazMax' if(`Haz'==. & `HazMax'!=.)
-			drop `HazMax'		
+            drop `HazMax'		
 
 		// Toss as needed to get unique list
 		keep if(`failTPt'==1 | _t==`tMax_inputted')		// keep t's where failures occur OR tmax (27FEB19)
@@ -942,12 +942,13 @@ qui{
 		gduplicates drop _t `thePairings', force		// toss all the other duplicates, now that we've whittled
 		
 		// If the time point isn't a failure time for *this* transition, wipe the surv and refill.  (Because the surv shouldn't vary in between.)
-		replace `Haz' = . if(`trFailTime'==0)
-			tempvar runCnt HazMax2
-			bysort `thePairings' (_t): gen `runCnt' = sum(_d)
-			bysort `thePairings' `runCnt' (_t): gegen double `HazMax2' = max(`Haz')
-			replace `Haz' = `HazMax2' if(`Haz'==. & `HazMax2'!=.)
-			replace `Haz' = 0 if(`runCnt'==0)
+        tempvar runCntT runCnt HazMax2 
+        bysort `trans' (_t): gen `runCntT' = sum(_d)                            // needs to be trans, not thePairings, or else collapsed trs won't calc properly
+        bysort `trans' _t: gegen `runCnt' = max(`runCntT')                      // need this b/c if there are multiple obsvs for a _t (e.g., collapsed trs), there's a chance `runCntT' won't reflect the quantity you intend
+        bysort `thePairings' `runCnt' (_t): gegen double `HazMax2' = max(`Haz') // needs to be thePairings b/c of poss trSp covar effects
+            replace `Haz' = `HazMax2' if(`Haz'==. & `HazMax2'!=.) 
+            replace `Haz' = 0 if(`runCnt'==0)           // JIC
+            drop `HazMax2'
 			
 		// Toss anything with a larger failure time than tmax (to help with memory)
 		drop if(_t>`tmax')
@@ -963,8 +964,7 @@ qui{
 		keep `refT' `refTrans' `refFrom' `refTo' `refFrTo' `refHaz'
 
 		drop if `refT'==.
-
-		
+        
 		// For every unique from-to pairing in the dataset, make sure there's a 
         // stime observation where surv = 1
 		tempvar flagT34 firstInP
