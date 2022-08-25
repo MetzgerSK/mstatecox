@@ -1,7 +1,8 @@
 {smcl}
-{* *! version 10feb2018}{...}
+{* *! version 24aug2022}{...}
 {viewerjumpto "Syntax" "mstutil##syntax"}{...}
 {viewerjumpto "Description" "mstutil##description"}{...}
+{viewerjumpto "Remarks" "mstutil##remarks"}{...}
 {viewerjumpto "Examples" "mstutil##examples"}{...}
 {viewerjumpto "Stored results" "mstutil##results"}{...}
 {viewerjumpto "Citation" "mstutil##cite"}{...}
@@ -38,7 +39,7 @@
 Must first estimate {help stcox} before running {bf:mstutil}.  {bf:stcox}'s {bf:strata()} option must also be specified, unless {bf:mstutil}'s {bf:sdur} specified. {p_end}
 
 {p 4 6 2}
-All stage variables' values must be sequentially increasing integers beginning at 1.  If not, Stata will return an error message.{p_end}
+Transition and stage identifiers must have integer values.  Additionally, the lowest stage identifier's value must be equal to 1, and all other stage identifiers must be sequential integers in increments of one.  If any of these conditions are not met, Stata will return an error message.{p_end}
 
 
 {marker description}{...}
@@ -48,6 +49,13 @@ All stage variables' values must be sequentially increasing integers beginning a
 {cmd:mstutil} is the first command you must run to generate transition probabilities from a Cox model.  It tells Stata which variables contain (1) the subject's current stage and 
 (2) the next stage(s) to which a subject could potentially transition.  The command presupposes the dataset is already formatted appropriately for a multi-state analysis (see Jones 
 and Metzger 2018, Supplemental Appendix A; de Wreede, Fiocco, and Putter 2010).
+
+
+{marker remarks}{...}
+{title:Remarks}
+
+{p 4 6 2}
+The transition, from, and to variables that {opt sdur} creates are named {bf:trans__ms}, {bf:to__ms}, and {bf:from__ms}, respectively.{p_end}
 
 
 {marker examples}{...}
@@ -139,6 +147,6 @@ and Metzger 2018, Supplemental Appendix A; de Wreede, Fiocco, and Putter 2010).
 
 
 {p 0 0 0}
-{bf:Last Updated} - 10FEB18
+{bf:Last Updated} - 24AUG22
 {p_end}
 
