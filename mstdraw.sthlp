@@ -21,7 +21,7 @@
 {title:Syntax}
 
 {p 4 16 2}
-{hi:mstdraw}{cmd:,} {opt tr:ansinfo} [{opt nol:abel}]{p_end}
+{hi:mstdraw}{cmd:,} {opt tr:ansinfo} [{opt nol:abel} {opt post}]{p_end}
 
 {p 5 16 2}
 {it:or}
@@ -36,6 +36,7 @@
 {syntab:Variant #1}
 {synopt :{opt tr:ansinfo}}required, reports model's possible transitions, in table and matrix form{p_end}
 {synopt :{opt nol:abel}}if stage labels are present, report stage numbers instead in the table, default is to use labels{p_end}
+{synopt :{opt post}}save the transition matrix to r-class memory{p_end}
 
 {syntab:Variant #2}
 {synopt :{opt prgr:aph}}required, generates stacked transition probability plot using one set of saved results in dataset{p_end}
@@ -49,7 +50,7 @@
 {synoptline}
 
 {p 4 6 2}
-Must first run {helpb mstutil}, draw({it:transVarName}) from({it:varname}) to({it:varname})} before running {bf:mstdraw}.  Cannot specify {bf:transinfo} and {bf:prgraph} simultaneously.  
+Must first run {helpb mstutil}, draw({it:transVarName}) from({it:varname}) to({it:varname}) before running {bf:mstdraw}.  Cannot specify {bf:transinfo} and {bf:prgraph} simultaneously.  
 For {bf:prgraph}, cannot specify {bf:id} and {bf:sort} simultaneously.{p_end}
 
 {p 4 6 2}
@@ -68,8 +69,10 @@ conditional statements involving the {it:stub}_Rslt_* variables (see {help mstdr
 {pstd}
 {cmd:mstdraw, transinfo} provides a table describing how many unique transition IDs are in your dataset and the from-to pairing 
 associated with each transition ID.  If you have applied (value) labels to your stages, the command will print out the labels 
-associated with each from-to pairing instead of stage ID numbers.  In addition to the table, {cmd:mstdraw, tr}
-also outputs a transition matrix identical in form and function to R mstate's transition matrix, for those familiar with that formatting.
+associated with each from-to pairing instead of stage ID numbers.{p_end}
+
+{pstd}  In addition to the table, {cmd:mstdraw, tr}
+also outputs a transition matrix identical in form and function to R mstate's transition matrix, for those familiar with that formatting.  This matrix can be saved to r-class memory by specifing the {opt post} option.
 {p_end}
 
 {pstd}
@@ -152,9 +155,9 @@ You will need to {bf:mstutil} again, with the addition of the {bf:draw()} option
 {marker results}{...}
 {title:Stored Results}
 
-{pstd}
-None.
-{p_end}
+{synoptset 22 tabbed}{...}
+{p2col 5 15 19 2: Matrices}{p_end}
+{synopt:{cmd:r(trMat)}} the transition matrix, if {opt mstdraw, transinfo post} specified{p_end}
 
 
 {marker cite}{...}
@@ -164,5 +167,5 @@ None.
 
 
 {p 0 0 0}
-{bf:Last Updated} - 22FEB19
+{bf:Last Updated} - 18AUG22
 {p_end}

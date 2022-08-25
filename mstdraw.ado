@@ -2,15 +2,15 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 23JUN22
-*! Last change: inserted version stmt, r-class mem preserve
+*! Last edited: 18AUG22
+*! Last change: added ability to post trMat to r-class mem
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstdraw	
-program define mstdraw, eclass sortpreserve
+program define mstdraw, rclass sortpreserve
     version 14.2
 qui{	
-	syntax [if], [NOLabel PRGRaph TRansinfo TYPE(string) TVAR(varname max=1) STGVAR(varlist min=2) SORT ID AREA(string) *]
+	syntax [if], [NOLabel PRGRaph TRansinfo TYPE(string) TVAR(varname max=1) STGVAR(varlist min=2) SORT ID AREA(string) POST *]
 
 	** Check to make sure data have been mstutil'd
 	if("`e(from)'"==""){
@@ -51,6 +51,12 @@ qui{
 		exit 198
 	}
 	
+    // if prgraph and post specified as option, ignore.
+    if("`prgraph'"!="" & "`post'"!=""){
+		noi di as gr "{bf:post} isn't applicable when running {bf:prgraph}.  Ignoring."
+		exit 198
+	}
+    
     // Preserve any results in return list
     tempname retPres
     _return hold `retPres'
@@ -174,19 +180,25 @@ qui{
 		noi list * in 1/`counter', noobs sepby(from) table //16DEC18 addition - the noi.  Wasn't printing, otherwise.  And how this wasn't a problem before now, who knows.
 		
 		// Display the matrix
-			// ...after you fill in the column name for the matrix
-			if(`labFlag'==1){
-				local matNames = ""
-			
-				// gen
-				forvalues s = 1/`e(maxStgNo)'{
-					local name: label `labsF' `s'
-					local name = subinstr("`name'"," ","_",.)
-					local matNames = trim("`matNames'" + " `name'")
-				}
-				matrix rownames `trMat' = `matNames'
-				matrix colnames `trMat' = `matNames'
-			}
+		// ...after you fill in the column name for the matrix
+
+            local matNames = ""
+        
+            // gen
+            forvalues s = 1/`e(maxStgNo)'{
+                // Add labels
+                if(`labFlag'==1){
+                    local name: label `labsF' `s'
+                    local name = subinstr("`name'"," ","_",.)
+                }
+                // Else, add stage ID's numeric identifier
+                else{
+                   local name = "`s'" 
+                }
+                local matNames = trim("`matNames'" + " `name'")
+            }
+            matrix rownames `trMat' = `matNames'
+            matrix colnames `trMat' = `matNames'
 			
 		noi di _n _n as ye "<<TRANSITION MATRIX>>"	
 		noi di as gr _col(5) "Rows: " as ye "`e(from)'"
@@ -196,7 +208,9 @@ qui{
 		noi di _n
 		
 		restore
-		cap _estimates unhold cox		
+		cap _estimates unhold cox	
+        
+        if("`post'"!="")    return matrix trMat = `trMat'
 	}	
 	
 	
