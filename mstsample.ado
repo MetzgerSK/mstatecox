@@ -74,7 +74,25 @@ qui{
     
 	tempname skm_b
 	matrix `skm_b' = e(b)
-
+    local namesB_orig: colfullnames `skm_b'
+    if(colsof(`skm_b')!=0){
+        // Toss any entries w/"o." -> are variables that got dropped from spec
+        // (e.g., collinearity).  Can write the regex in this way because periods
+        // aren't legal chars for Stata varnames, so no chance of accidentally
+        // removing a 'real' variable.
+        tempname nms
+        mata: `nms' = tokens("`namesB_orig'")
+        
+        * throw colnames w/o dropped vars back to Stata
+        mata: st_local("newNames", invtokens(`nms'[,selectindex(!regexm(`nms', "^o\."))]))  
+        
+        * subset stored covar matrix to non-dropped vars only
+        mata: st_matrix("`skm_b'", st_matrix("`skm_b'")[,selectindex(!regexm(`nms', "^o\."))])    
+        matrix colnames `skm_b' = `newNames'
+        matrix rownames `skm_b' = "y1"
+        mata: mata drop `nms'   // tidy
+	}
+    
     ** Make sure user didn't specify a non-parametric model
 	** If fixed horizon specified, make sure the user understands what that means
 	if("`fixedhorz'"!=""){
