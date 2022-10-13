@@ -103,16 +103,18 @@ qui{
 		local string = ""
 		
 		qui{
-			gen skm_tr = .
-			gen skm_from = .
-			gen skm_to = .
-			gen skm_trName = ""
+            tempvar skm_tr skm_from skm_to skm_trName
+			gen `skm_tr' = .
+			gen `skm_from' = .
+			gen `skm_to' = .
+			gen `skm_trName' = ""
 		}
 		local labFlag = 0
 		
 		if("`labsF'"=="`labsT'" & "`labsT'"!="" & "`nolabel'"==""){
-			qui gen skm_fromName = ""
-			qui gen skm_toName = ""
+            tempvar skm_fromName skm_toName
+			qui gen `skm_fromName' = ""
+			qui gen `skm_toName' = ""
 			local labFlag = 1
 		}
 		
@@ -128,12 +130,12 @@ qui{
 				qui count if(`e(from)'==`fr' & `e(to)'==`toTo')
 				
 				if(`r(N)' > 0){
-					qui replace skm_from = `fr' in `counter'
-					qui replace skm_to = `toTo' in `counter'
+					qui replace `skm_from' = `fr' in `counter'
+					qui replace `skm_to' = `toTo' in `counter'
 			
 					qui sum `e(trans)' if(`e(from)'==`fr' & `e(to)'==`toTo')
 					local tr = `r(mean)'
-					qui replace skm_tr = `r(mean)' in `counter'
+					qui replace `skm_tr' = `r(mean)' in `counter'
 
 						
 					// for the matrix
@@ -142,18 +144,18 @@ qui{
 					if(`labFlag'==1){
 						// Fill in the text labels for the list
 						local nF: label `labsF' `fr'
-						qui replace skm_fromName = "`nF'" in `counter'
-						label variable skm_from `labsF'
+						qui replace `skm_fromName' = "`nF'" in `counter'
+						label variable `skm_from' `labsF'
 						
 						local nT: label `labsT' `toTo'
-						qui replace skm_toName = "`nT'" in `counter'
-						label variable skm_to `labsT'
+						qui replace `skm_toName' = "`nT'" in `counter'
+						label variable `skm_to' `labsT'
 					
-						qui replace skm_trName = skm_fromName + " → " + skm_toName in `counter'
+						qui replace `skm_trName' = `skm_fromName' + " → " + `skm_toName' in `counter'
 						
 					}
 					else{
-						qui replace skm_trName = "`fr'" + " → " + "`toTo'" in `counter'
+						qui replace `skm_trName' = "`fr'" + " → " + "`toTo'" in `counter'
 					}
 						
 					local `counter++'
@@ -166,14 +168,15 @@ qui{
 		
 		// Display the list (and the varnames won't already exist, because you're saving only the SKM variables
 			// ...after you housekeep and do some nicer variable names
-			keep skm_*
-			rename skm_tr trNo
-			rename skm_from from
-			rename skm_to to
-			rename skm_trName trName
-			cap rename skm_fromName fromName      
-			cap rename skm_toName toName
-			
+			keep __0000*    // with the switch to temp varnames, have to do it this way
+			rename `skm_tr' trNo
+			rename `skm_from' from
+			rename `skm_to' to
+			rename `skm_trName' trName
+			cap rename `skm_fromName' fromName      
+			cap rename `skm_toName' toName
+			drop __0000* // if there's any tempvars left at this point, toss them
+            
 			order trName, last
 			
 		noi di _n as ye "<<SUMMARY LIST>>"
