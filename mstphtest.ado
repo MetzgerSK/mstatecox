@@ -18,7 +18,7 @@ cap program drop mstphtest
 program define mstphtest, rclass   
     version 14.2
 qui{
-	syntax , [*]	// specify any estat phtest options after the comma
+	syntax , [log km rank time(varname) *]	// specify any estat phtest options after the comma
 	
     // Unlike the other mst cmds, this one is r-class.  Like any of Stata's r-class
     // commands, what's previously in r-class memory should be gone after running
@@ -47,7 +47,7 @@ qui{
     if("`e(shared)'"!=""){
     	noi di as gr "No {bf:strata()} variable present due to presence of {bf:shared()}.  Stata does not currently permit both in the same model."
         noi di as gr _n "Shifting to regular {bf:estat phtest} routine: "
-        cap noi estat phtest, detail `log' `km' `time' //  <- only poss non-plot opts.
+        cap noi estat phtest, detail `log' `km' `time' `rank' //  <- only poss non-plot opts.
             // push through estat phtest's regular r-class returns
             if(_rc==0)  return add
         exit
@@ -131,10 +131,10 @@ qui{
                 // now a message that gets printed to the user about this in the 
                 // housekeeping section.
                 
-			cap qui estat phtest, detail `log' `km' `time' //  <- only poss non-plot opts.
+			cap qui estat phtest, detail `log' `km' `time' `rank' //  <- only poss non-plot opts.
 			
 			// If no error, say loudly
-			if(_rc==0)				noi estat phtest, detail `log' `km' `time'
+			if(_rc==0)				noi estat phtest, detail `log' `km' `time' `rank'
 			// If error, say insuff obsvs.
 			if(_rc==2001)			noi di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
 			// If any other error, just be generic.
