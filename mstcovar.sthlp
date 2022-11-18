@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 04may2021}{...}
+{* *! version 21jun2022}{...}
 {viewerjumpto "Syntax" "mstcovar##syntax"}{...}
 {viewerjumpto "Description" "mstcovar##description"}{...}
 {viewerjumpto "Options" "mstcovar##options"}{...}
@@ -23,18 +23,20 @@
 {title:Syntax}
 
 {p 4 16 2}
-{hi:mstcovar}{cmd: {varname}} {ifin}, {opt n:ames(varlist)} [{opt v:alue(stats)} {opt rep:lace} {opt fr:ailty} {opt clear}]
+{hi:mstcovar}{cmd: {varname}} {ifin}, {opt n:ames(varlist)} [{opt v:alue(stats)} {opt rep:lace} {opt fr:ailty} {opt offs:et} {opt esamp:le} {opt clear}]
 
 {synoptset 20 tabbed}{...}
 {synopthdr}
 {synoptline}
 {syntab:Required}
-{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless (1) {opt frailty} specified or (2) {opt sdur} specified for {cmd:mstutil}{p_end}
+{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless (1) {opt frailty} specified, (2) {opt offset} specified, or (3) {opt sdur} specified for {cmd:mstutil}{p_end}
 
 {syntab:Optional}
-{synopt :{opt v:alue(stats)}}value at which the variable(s) in question should be held, default is median.  If {opt frailty} specified, represents the log-frailty's value.{p_end}
-{synopt :{opt rep:lace}}required if defining a new transition-specific covariate list for a previously {bf:mstcovar}-set {it:varname}.{p_end}
+{synopt :{opt v:alue(stats)}}value at which the variable(s) in question should be held, default is median.  If {opt frailty} specified, represents the log-frailty's value.  If {opt offset} specified, represents the offset's value.{p_end}
+{synopt :{opt rep:lace}}required if defining a new transition-specific covariate list for a previously {bf:mstcovar}-set {it:varname}{p_end}
 {synopt :{opt fr:ailty}}{opt value()}'s {it:stats} represents the log-frailty's value; default value is 0.  Relevant only if {opt shared()} specified for {cmd:stcox}.{p_end}
+{synopt :{opt offs:et}}{opt value()}'s {it:stats} represents the offset's value; default value is 0.  Relevant only if {opt offset()} specified for {cmd:stcox}.{p_end}
+{synopt :{opt esamp:le}}restrict {opt value(stats)} to the estimation sample, if relevant{p_end}
 {synopt :{opt clear}}clears all {bf:mstcovar}-related information from memory; supersedes all other options, if specified{p_end}
 {synoptline}
 
@@ -49,7 +51,7 @@ Must first run {help stcox} and {help mstutil} before running {bf:mstcovar}.{p_e
 {cmd:mstcovar} is the second command you must run to generate transition probabilities from a Cox model.  It is only necessary if the Cox model has covariates.  It performs a similar task to Clarify's {help setx}.{p_end}
 
 {pstd}
-For each 'master' covariate, the user gives {bf:mstcovar} a list of that covariate's transition-specific variable names, and the value at which these variables should be held.
+For each 'master' covariate, the user gives {bf:mstcovar} (1) a list of that covariate's transition-specific variable names and (2) the value at which these variables should be held.
 {bf:mstsample} uses this information when running the simulations for any requested transition probabilities.{p_end}
 
 {pstd}All covariates (transition-specific or otherwise) in your {help stcox} model must appear in one of {cmd:mstcovar}'s lists.  If this is not so, {cmd:mstsample} will throw an error.{p_end}
@@ -77,14 +79,14 @@ typing {bf:clear *} in Stata.  {bf: mstcovar, clear} is the only way to ensure y
 	{pmore}If the master covariate's list is already in memory and you are simply changing the covariate's value, {opt names()} is not required.{p_end}
 	{pmore}If {bf:sdur} was specified in the {cmd:mstutil} statement, {opt names()} is not required, ever.  
 The model has only one transition, and therefore, only one "transition-specific" covariate can be present--the master variable specified via {it:varname}.{p_end}
-	{pmore}If {bf:frailty} was specified, {opt names()} is irrelevant and will be ignored.{p_end}
+	{pmore}If {opt frailty} or {opt offset} was specified, {opt names()} is irrelevant and will be ignored.{p_end}
 
 {dlgtab:Optional}
 
 {phang}{opt v:alue(stats)} specifies the value at which this particular variable (and its transition-specific equivalents) should be held.  {it:stats} can be:{p_end}
-	{pmore2}1.) A numerical expression or value (e.g., ln(5), -234, 0.9*7).  If {opt frailty} is specified, this is the only permissible possibility.{p_end}
+	{pmore2}1.) A numerical expression or value (e.g., ln(5), -234, 0.9*7).  If {opt frailty} or {opt offset} is specified, this is the only permissible possibility.{p_end}
 	{pmore2}2.) One of {help tabstat##statname:tabstat}'s statistics.  Only one statistic may be specified at a time.{p_end}
-	{pmore}If you want to calculate a statistic using estimation sample observations only, be sure to specify {bf:if(e(sample)==1)}.{p_end}
+	{pmore}If you want to calculate a statistic using estimation sample observations only, be sure to specify either {bf:if(e(sample)==1)} or {cmd:mstcovar}'s {opt esample} option.{p_end}
 	{pmore}If nothing is entered for {bf:value()}, {bf:mstcovar} will set the covariate equal to its median value.{p_end}
 
 {phang}{opt rep:lace} is required to override any current variable list for a given master covariate.  It exists to minimize the chance of accidental user errors while {cmd:mstcovar}ing.  
@@ -93,7 +95,19 @@ You may want to override an existing list if you previously entered the list inc
 	for {it:varname}, compare {it:varname}'s new list to {it:varname}'s list in memory, see the two are not the same, and throw an error.{p_end}  
 {pmore}As a corollary, for convenience, you could enter the same list of covariates over and over again in {bf:names()} {it:without} specifying {bf:replace}, since there are no differences between your 'new' list and the list in memory.{p_end}
 	
-{phang}{opt fr:ailty} signifies that the value entered into {opt value()} is for the log-frailty term (also known as the random effect).  The log-frailty = {opt value()} implies that the frailty = exp({opt value}).  If no log-frailty value is set by {cmd:mstcovar}, {cmd mstsample} will automatically set the log-frailty to 0, the log-frailty's mean.  If you specify {opt frailty} but also give a {cmd tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.
+{phang}{opt fr:ailty} signifies that the specified {opt value()} is for the log-frailty term (also known as the random effect).  
+The log-frailty = {opt value()} implies that the frailty = exp({opt value}).  If no log-frailty value is set by {cmd:mstcovar}, {cmd:mstsample} will automatically set the log-frailty to 0, the log-frailty's mean.  
+If you specify {opt frailty} but also give a {cmd:tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.  
+If you specify both {opt frailty} and {opt offset} in one {cmd:mstcovar} call, {cmd:mstcovar} will throw an error.{p_end}
+
+{phang}{opt offs:et} signifies that the specified {opt value()} is for the offset term, which is added to the linear combination (XB + offset).  
+If no offset value is set by {cmd:mstcovar}, {cmd:mstsample} will automatically set the offset to 0.  
+If you specify {opt offset} but also give a {cmd:tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.  
+If you specify both {opt frailty} and {opt offset} in one {cmd:mstcovar} call, {cmd:mstcovar} will throw an error.{p_end}
+
+{phang}{opt esamp:le} is a convenience option and is only relevant if you specify a {cmd:tabstat} {it:stat} for {opt value()}.  
+If {opt esample} is specified, {cmd:tabstat} computes the requested statistic using only the estimation sample.  This option is equivalent to specifying {bf:mstcovar {it:varname} if(e(sample)==1)}.
+{cmd:mstcovar} ignores {opt esample} if your specified {opt value()} does not involve {cmd:tabstat}.{p_end}
 
 {phang}{opt clear} will clear all of {cmd:mstcovar}'s variable lists in memory and {cmd:mstcovar}'s covariate values matrix.  If {bf:clear} is present, {cmd:mstcovar} will ignore any other option you specify.{p_end}
 	{pmore}We {it:{opt strongly}} recommend **always** inserting {bf: mstcovar, clear} before your initial set of {bf:mstcovar} statements.
@@ -105,7 +119,7 @@ You may want to override an existing list if you previously entered the list inc
 {title:Examples}
 
 {pstd}Competing-risks data - Semi-parametric{p_end}
-{p 6 6 2}{it:Set ifp to its 25th percentile, tumsize to its maximum, and pelnode to its mean value.}{p_end}
+{p 6 6 2}{it:Subset to stnum<=105 for demo purposes.  Set ifp to its 25th percentile in the entire dataset, tumsize to its maximum in the entire dataset, and pelnode to its mean value in the estimation sample.}{p_end}
 {phang2}{cmd:. webuse hypoxia}{p_end}
 {phang2}{cmd:. gen days = (dftime * 365.25)} {p_end}
 {phang2}{cmd:// ^ to put time in days}{p_end}
@@ -121,27 +135,28 @@ You may want to override an existing list if you previously entered the list inc
 {p 15 19 2}{cmd: gen `x'_tr`tr' = cond(trans==`tr', `x', cond(`x'==., ., 0))} {p_end}
 {phang3}{cmd: {c )-}} {p_end}
 {p 9 14 2}{cmd: {c )-}} {p_end}
-{phang2}{cmd:. stcox  *_tr1 *_tr2, strata(trans) efron}{p_end}
+{phang2}{cmd:. stcox  *_tr1 *_tr2 if(stnum<=105), strata(trans) efron}{p_end}
 {phang2}{cmd:. mstutil, from(curStg) to(nextStage)}{p_end}
 {phang2}{cmd:. mstcovar, clear}{p_end}
 {phang2}{cmd:. mstcovar ifp, n(ifp_tr1 ifp_tr2) v(p25)}{p_end}
 {phang2}{cmd:. mstcovar tumsize, n(tumsize_tr1 tumsize_tr2) v(max)}{p_end}
-{phang2}{cmd:. mstcovar pelnode, n(pelnode_tr1 pelnode_tr2) v(mean)}{p_end}
+{phang2}{cmd:. mstcovar pelnode, n(pelnode_tr1 pelnode_tr2) v(mean) esample}{p_end}
 {phang2}{cmd:. mstcovar}{p_end}
+
 
 {p 6 6 2}{it:You decide to estimate only one effect for tumsize, and also want to set pelnode to its median value.}{p_end}
 {phang2}{cmd:. mstcovar tumsize, n(tumsize) v(max)}{p_end}
 {phang2}{cmd: // ^ will throw error, because new list != list in memory}{p_end}
 {phang2}{cmd:. mstcovar tumsize, n(tumsize) v(max) replace}{p_end}
 {phang2}{cmd:. mstcovar pelnode, n(pelnode_tr1 pelnode_tr2)}{p_end}
-{phang2}{cmd: // ^ replace's presence or absence won't matter b/c new list==list in memory}{p_end}
+{phang2}{cmd: // ^ replace's presence or absence won't matter b/c new names() list = names() list in memory}{p_end}
 {phang2}{cmd:. mstcovar}{p_end}
 
 {p 6 6 2}{it:You decide to set tumsize to 1 standard deviation above its mean for the estimation sample.}{p_end}
 {phang2}{cmd:. sum tumsize if(e(sample)==1)}{p_end}
 {phang2}{cmd:. return list}{p_end}
 {phang2}{cmd:. mstcovar tumsize, v(r(mean)+r(sd))}{p_end}
-{phang2}{cmd: // ^ not necessary to enter list, b/c already in memory}{p_end}
+{phang2}{cmd: // ^ not necessary to enter names() list, b/c already in memory}{p_end}
 {phang2}{cmd:. mstcovar}{p_end}
 
 
@@ -170,6 +185,32 @@ You may want to override an existing list if you previously entered the list inc
 {phang2}{cmd:. mstcovar, v(0.1) frailty}{p_end}
 {phang2}{cmd:. mstcovar}{p_end}
 
+
+{pstd}Single duration data - Semi-parametric with offset{p_end}
+{p 6 6 2}{it:Set age to 25 and the offset to 1 (arbitrarily uses female as the offset, purely for demonstration purposes).}{p_end}
+{phang2}{cmd:. webuse catheter}{p_end}
+{phang2}{cmd:. stset time, fail(infect)}{p_end}
+{phang2}{cmd:. stcox age, efron offset(female)}{p_end}
+{phang2}{cmd:. mstutil, sdur}{p_end}
+{phang2}{cmd:. mstcovar, clear}{p_end}
+{phang2}{cmd:. mstcovar age, v(25)}{p_end}
+{phang2}{cmd:. mstcovar, v(1) offset}{p_end}
+{phang2}{cmd:. mstcovar}{p_end}
+
+
+{pstd}Single duration data - Semi-parametric with frailty and offset{p_end}
+{p 6 6 2}{it:Set age to 25, the offset to 1, and the log-frailty to 0.1 (arbitrarily uses female as the offset, purely for demonstration purposes).}{p_end}
+{phang2}{cmd:. webuse catheter}{p_end}
+{phang2}{cmd:. stset time, fail(infect)}{p_end}
+{phang2}{cmd:. stcox age, efron offset(female) shared(patient)}{p_end}
+{phang2}{cmd:. mstutil, sdur}{p_end}
+{phang2}{cmd:. mstcovar, clear}{p_end}
+{phang2}{cmd:. mstcovar age, v(25)}{p_end}
+{phang2}{cmd:. mstcovar, v(1) offset}{p_end}
+{phang2}{cmd:. mstcovar, v(0.1) frailty}{p_end}
+{phang2}{cmd:. mstcovar}{p_end}
+
+
 {marker results}{...}
 {title:Stored Results}
 
@@ -179,6 +220,8 @@ You may want to override an existing list if you previously entered the list inc
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: {help macros:Macros}}{p_end}
 {synopt:{cmd:mstcovar_{it:varname}}}list of {it:varname}'s transition-specific covariates (global){p_end}
+{synopt:{cmd:mstcovar_lFr}}if {opt frailty} specified, log-frailty's value (global){p_end}
+{synopt:{cmd:mstcovar_offset}}if {opt offset} specified, offset's value (global){p_end}
 
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: {help  matrix utility:Matrices}}{p_end}
@@ -193,5 +236,5 @@ You may want to override an existing list if you previously entered the list inc
 
 
 {p 0 0 0}
-{bf:Last Updated} - 04MAY21
+{bf:Last Updated} - 21JUN22
 {p_end}

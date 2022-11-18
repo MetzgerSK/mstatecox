@@ -1,5 +1,5 @@
-/*	mstcovar, v1.11
-	04MAY21 (ability to set log-frailty value)
+/*	mstcovar, v1.12
+	21JUN22 (ability to set offset value, esample convenience option)
 	
 	Part of the mstatecox package for Stata.  Permits the user to set which variables
 	are associated with which set of transition-specific covariates.  Also, once
@@ -9,8 +9,8 @@
 	Default value = median (as of 04AUG17).
 */
 
-*! Last edited: 04MAY21
-*! Last change: ability to set value for log-frailty
+*! Last edited: 21JUN22
+*! Last change: ability to set value for offset + esamp convenience option
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 cap program drop mstcovar
@@ -20,7 +20,7 @@ local noiYN = `c(noisily)'	// Did user specify qui?  (Must do here b/c if you qu
 
 qui{
 	
-	syntax [varname(default=none)] [if] [in] [, FRailty Names(varlist) Value(string) REPlace CLEAR]	
+	syntax [varname(default=none)] [if/] [in] [, FRailty OFFSet Names(varlist) Value(string) REPlace CLEAR ESAMPle]	
 		// Replace: If there's already a list in memory with diff covar names.
 		//			Otherwise, Stata will assume everything's the same.
 		
@@ -29,6 +29,13 @@ qui{
 	// Get the macro lists immediately.
 	local macList: all globals "mstcovar*"
 
+    // Form up the actual if (if esample specified, need to append a "e(sample)==1" to anything in the if)
+    local and = cond("`if'"!="" & "`esample'"!="", " & ", "")
+    local esamp = cond("`esample'"=="", "", "e(sample)==1")
+    if("`if'"!="" | "`esample'"!=""){
+        local if = "if(`if'`and'`esamp')"
+    }
+    
 	// ECHO: If there's nothing specified, take it as an echo, and print everything--all covar lists and all values.
 	if("`varlist'`names'`value'`frailty'`replace'`clear'"==""){
 		if(`noiYN'==1)	noi di _n as gr ">> " as gr "Stored Lists" as gr " <<"
@@ -85,29 +92,53 @@ qui{
 		exit 198
 	}
 	
-	// If it's the frailty they've specified, set the value and be done
-	if("`frailty'"!=""){
-		// Make sure the Cox model in memory has a frailty term
-		if("`e(cmd)'"!="stcox_fr"){
+	// If it's the frailty or the offset they've specified, set the value and be done
+	if("`frailty'"!="" | "`offset'"!=""){
+		// Make sure the Cox model in memory has a frailty term, if frailty specified
+		if("`frailty'"!="" & "`e(cmd)'"!="stcox_fr"){
 			noi di in gr "(Log-)frailty value specified, but Cox model in memory has no frailty term."
 			exit
 		}
+		       
+        // Make sure the Cox model in memory has an offset term, if offset specified
+		if("`offset'"!="" & "`e(offset)'"==""){
+			noi di in gr "Offset value specified, but Cox model in memory has no offset term."
+			exit
+		}
+        
+		// If both frailty and offset specified, kick an error
+		if("`frailty'"!="" & "`offset'"!=""){
+			noi di as err "Cannot specify both {bf:frailty} and {bf:offset}.  Must specify one at a time."
+			exit 198
+		}
+		
 		// If the user's specified anything else, let them know it'll be ignored
 		if("`varlist'"!=""){
 			noi di as gr ///
-					"{opt:frailty} specified.  Ignoring {bf:`varlist'}--run {cmd:mstcovar} again to set " ///
+					"{opt `frailty'`offset'} specified.  Ignoring {bf:`varlist'}--run {cmd:mstcovar} again to set " ///
 					as ye "`varlist'" as gr "'s value."
 		}
+        
 		// Ensure the value the user's entered is a number, not a tabstat statistic.
 		if(real("`value'")==.){
-			noi di as err "Must specify a numerical value in {bf:value()} when {bf:frailty} specified."
+			noi di as err "Must specify a numerical value in {bf:value()} when {bf:`frailty'`offset'} specified."
 			exit 108
 		}
+        
 		// Set the value of the log-frailty
-		global mstcovar_lFr = `value'
-		if(`noiYN'==1){
-			noi di as gr "Log-frailty set to " as ye `value'
-			noi di as gr "(implies frailty = " as ye %5.4f exp(`value') as gr ")"
+		if("`frailty'"!=""){
+			global mstcovar_lFr = `value'
+			if(`noiYN'==1){
+				noi di as gr "Log-frailty set to " as ye `value'
+				noi di as gr "(implies frailty = " as ye %5.4f exp(`value') as gr ")"
+			}
+		}
+		// Else, it has to be the offset, given the structure of the overarching if/else
+		else{
+			global mstcovar_offset = `value'
+			if(`noiYN'==1){
+				noi di as gr "Offset set to " as ye `value'
+			}
 		}
 		exit
 	}
@@ -123,7 +154,7 @@ qui{
 	
 	// if sdur's in memory, then automatically transfer the current varlist into name, if name's empty
 	if(`e(sdur)'==1 & "`names'"==""){
-		if(`noiYN'==1) noi di as gr "{bf:sdur} detected.  Filling {bf:names()} automatically with specified variable."
+		if(`noiYN'==1 & "${mstcovar_`varlist'}"=="") noi di as gr "{bf:sdur} detected.  Filling {bf:names()} automatically with specified variable."
 		local names `varlist'
 	}
 	
