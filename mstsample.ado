@@ -1017,8 +1017,8 @@ qui{
 		
 		sort `refTrans' `refFrom' `refTo' `refT'
 		
-        tempfile msfit
-		save `msfit', replace
+        tempfile msfit2
+		save `msfit2', replace
 		local mrgSize = `c(N)'
 
     restore
@@ -1112,8 +1112,8 @@ qui{
 	tempvar refhaz refSurv
 
 	// Bring the msfit vars back in.
-	if(`mrgSize' < 100000)	merge 1:1 _n using `msfit', nogen
-	else					fmerge 1:1 _n using `msfit', nogen
+	if(`mrgSize' < 100000)	merge 1:1 _n using `msfit2', nogen
+	else					fmerge 1:1 _n using `msfit2', nogen
 	
 		
 	// In preparation for the sims, sum all the outward transitions together for every from-t pairing
