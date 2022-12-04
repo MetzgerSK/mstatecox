@@ -88,7 +88,7 @@ qui{
     
 	// If sdur isn't specified, then from and to need to be.  Shout at the user.
 	if("`sdur'"=="" & ("`from'"=="" | "`to'"=="")){
-		noi di as err "You must either (1) specify variables containing both the from and to stages or (2) declare your data to contain a single transition only.  Try again."
+		noi di as err "You must either (1) specify variables for {bf:from()} and {bf:to()} or (2) declare your data to contain a single transition only.  Try again."
 		exit 198
 	}
     
@@ -138,9 +138,12 @@ qui{
 		}
 		else{
 			noi di as gr _c "You specified {bf:sdur} for a single transition, but you "
-            if("`e(strata)'"!="")	noi di as gr "estimated stcox with a strata variable.  Transition variable set to " as ye "`e(strata)'" as gr "."
+            if("`e(strata)'"!=""){
+                noi di as gr "estimated stcox with a strata variable.  You must specify variables corresponding to the {bf:from} and {bf:to} stages."
+                cleanVars
                 _return restore `retPres'
                 exit 198
+            }
 			if("`draw'"!="")	    noi di as gr "specified the {bf:draw} option.  Ignoring {bf:sdur}."
 		}
 		
