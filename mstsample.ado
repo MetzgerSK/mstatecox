@@ -1008,7 +1008,7 @@ qui{
 		replace `refhaz' = 0 if(`refT'==0 & `refhaz'<0)
 		replace `outhaz' = 0 if(`refT'==0 & `outhaz'<0)  	// ensuring the starting observation is coded as stime for haz and outsum (though I don't think this should matter)
 															// 29JUL17: this now needs to shift to 0 instead of stime, given how you've recoded things for unique failure times.
-	qui sum `outhaz'
+    qui sum `outhaz' if(`refT'>`stime' & `refT'<=`tMax_inputted')
 		local m_min = `r(min)'
 		local m_max = `r(max)'
 	cap matrix drop tShoot_mstate
@@ -1069,7 +1069,7 @@ qui{
 	if(`m_min'<0){
 		if("`hazoverride'"==""){
 			noi di _n as err "The outward transition hazards for one or more stages are summing to less than 0 when they typically should not."
-			noi di as err "This *can* be a sign of model specification issues, particularly when there are a number of binary independent variables and/or few observed transitions between two stages."
+			noi di as err "This can be a sign of model specification issues, particularly when there are a number of binary independent variables and/or few observed transitions between two stages."
 			noi di as err "Adjust your model's specification and try again."
 			
 			noi di _n as err "Time, trans, from, to, survivor, trans-specific haz, trans-specific cumulative haz, and stages' outward hazs saved to {res:{bf:tShoot_mstate}} matrix in `where'."

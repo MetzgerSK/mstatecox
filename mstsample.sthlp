@@ -149,7 +149,7 @@ We suggest you specify a value here, because your dataset may have extreme/outli
 {phang}{opt gap} tells {bf:mstsample} that the {bf:stset}ted duration is measured in gap time.  {bf:mstsample}'s default is total time.{p_end}
 
 {marker optionsHazo}{...}
-{phang}{opt hazo:verride} is an override option, in the event that the exiting transitions' hazards for one (or more) stages sum to greater than 1 (or less than 0).  
+{phang}{opt hazo:verride} is an override option, in the event that the exiting transitions' hazards for one (or more) stages sum to greater than 1 (or less than 0) within the interval ({it:s},{it:t}].  
 							A value greater than 1 corresponds to the rows of the A(t) matrix summing to more than 1.
 							This condition represents a statistical impossibility, in theory: each row in the A(t) matrix represents the probability of a subject moving from 
 							the current stage into another stage in t (or staying in the current stage).
