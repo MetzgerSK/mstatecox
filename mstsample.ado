@@ -908,41 +908,8 @@ qui{
 
 			// Reset the stset to the original thing (i.e., without the id() from 
             // stsplit, if there was no ID to start with)
+            reset_stset, id(`stID_ch')
 
-                * time (or else will show up as _t when you stset, which isn't helpful)
-				local st_t:			char _dta[st_bt]
-				
-				* failure
-				local st_d:			char _dta[st_bd]
-				local st_dNums:		char _dta[st_ev]
-					if("`st_dNums'"!="")	local st_dNums = "==`st_dNums'"
-					
-				* if/weight
-				local st_ifexp: 	char _dta[st_ifexp] 
-					if("`st_ifexp'"!="")	local st_ifexp = "if(`st_ifexp')"
-				local st_weight:	char _dta[st_w]
-				
-				* multiple_options (since most extensive): 13 possibilities
-				local st_scale:		char _dta[st_bs] 
-				local st_enter: 	char _dta[st_enter]
-				local st_exit : 	char _dta[st_exit] 
-				local st_origin: 	char _dta[st_orig] 
-				local st_ifopt: 	char _dta[st_if] 
-				local st_ever: 		char _dta[st_ever] 
-				local st_never: 	char _dta[st_never] 
-				local st_after: 	char _dta[st_after] 
-				local st_before: 	char _dta[st_befor] 
-				local st_bt0: 		char _dta[st_bt0] 
-				local st_show:		char _dta[st_show]
-			
-			stset `st_t' `st_ifexp' `st_weight' , 				///
-						failure(`st_d'`st_dNums') id(`stID_ch') ///
-						scale(`st_scale')	enter(`st_enter') 	///
-						exit(`st_exit')		origin(`st_origin') ///
-						ever(`st_ever')		never(`st_never') 	///
-						after(`st_after')	before(`st_before') ///
-						time0(`st_bt0') 	if(`st_ifopt') 		///
-						`st_show' 	
 		}
         _estimates unhold `origCox'
         cap drop `flag19'
@@ -2815,5 +2782,53 @@ qui{
         count if `qoi'==.
         local nMiss = `r(N)'
     }
+}
+end
+********************************************************************************************************************************
+// Helper option to reset stset to original settings, before any stsplit-related manips
+cap prog drop reset_stset
+program define reset_stset
+qui{
+        syntax, [ID(string)]
+        
+        local stID_ch `id'
+        
+        * time (or else will show up as _t when you stset, which isn't helpful)
+        local st_t:			char _dta[st_bt]
+        
+        * failure
+        local st_d:			char _dta[st_bd]
+        local st_dNums:		char _dta[st_ev]
+            if("`st_dNums'"!="")	local st_dNums = "==`st_dNums'"
+            
+        * if/weight
+        local st_ifexp: 	char _dta[st_ifexp] 
+            if("`st_ifexp'"!="")	local st_ifexp = "if(`st_ifexp')"
+        local st_weight:	char _dta[st_w]
+        
+        * multiple_options (since most extensive): 13 possibilities
+        local st_scale:		char _dta[st_bs] 
+        local st_enter: 	char _dta[st_enter]
+        local st_exit : 	char _dta[st_exit] 
+        local st_origin: 	char _dta[st_orig] 
+        local st_ifopt: 	char _dta[st_if] 
+        local st_ever: 		char _dta[st_ever] 
+        local st_never: 	char _dta[st_never] 
+        local st_after: 	char _dta[st_after] 
+        local st_before: 	char _dta[st_befor] 
+        local st_bt0: 		char _dta[st_bt0] 
+        local st_show:		char _dta[st_show]
+        
+        stset, clear    // to ensure id() clears
+        
+        // re-stset
+        stset `st_t' `st_ifexp' `st_weight' , 				///
+                    failure(`st_d'`st_dNums') id(`stID_ch') ///
+                    scale(`st_scale')	enter(`st_enter') 	///
+                    exit(`st_exit')		origin(`st_origin') ///
+                    ever(`st_ever')		never(`st_never') 	///
+                    after(`st_after')	before(`st_before') ///
+                    time0(`st_bt0') 	if(`st_ifopt') 		///
+                    `st_show' 	
 }
 end
