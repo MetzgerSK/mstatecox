@@ -469,25 +469,14 @@ qui{
         
 	// NON-PARAMETRIC 
 	if(colsof(`skm_b')==0){
-        // Just overwrite everything in s0 after doing (# fails/#at risk) for each tr.
-		tempvar stshaz 
-		
-		// get basic haz, defined as # fails/# at risk
-		sts gen `stshaz' = h, by(`trans')	// needs to stay trans--represents the strata of interest
-		recode `stshaz' (.=0)
-		
-		// get Nelson-Aalen
-		tempvar intermed naH
-		bysort `trans' _t  : gen double `intermed' = `stshaz' if(_n==1)
-		bysort `trans' (_t): gen double `naH' = sum(`intermed')
-		
-		// 21FEB19 mod - keep in H0 form
-		gen double `H0' = `naH'
-		
-		cap drop `stshaz'
-		cap drop `intermed'
-		cap drop `naH'
+        // Shift to straight N-A from stcox (will have issues incorporating 
+        // frail +/or offset, otherwise)
+        predict double `H0', basechaz
         
+            // [ST] v17, p. 152: predict..., basechaz after stcox will produce 
+            // Nelson-Aalen estimate of H(t) "when [the model is] estimated 
+            // with no covariates".  (*And* the tie correction's Breslow -> KEY.)
+
         // Save baseline haz
         preserve
             drop if `H0'==. 
@@ -951,7 +940,6 @@ qui{
             fillForward, t(_t) f(`anyFail') qoi(`H0') tr(`trans') id(`sorter')
             
             drop `anyFail'
-
         }
         
         // FINAL H
