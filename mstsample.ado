@@ -441,7 +441,7 @@ qui{
 	
     // Get frailty value
     if("`e(shared)'"!=""){
-        local frVal = "$mstcovar_lFr"
+        local frVal = $mstcovar_lFr
         local frNote = ""
         if("`frVal'"==""){
             local frVal = 0	        // if no log-frailty given, set to 0
@@ -453,30 +453,108 @@ qui{
     
     // Get offset value
     if("`e(offset)'"!=""){
-        local offVal = "$mstcovar_offset"
+        // Stash mean
+        sum `e(offset)' if(e(sample)==1)
+        local offsetMn = `r(mean)'
+
+        // Convert inputted offset value to its demeaned equivalent
+        local offVal = $mstcovar_offset - `offsetMn'
         local offNote = ""
         if("`offVal'"==""){
-            local offVal = 0	// if no offset given, set to 0
+            local offVal = 0 - `offsetMn'	// if no offset given, set to 0
             local offNote "> No offset value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
         }
     }    
     // If no offset value set, offVal=0
     else    local offVal = 0
     
+    // Pull info on noadj, since no other way to recover
+    tokenize "`e(cmdline)'", parse(",")
+    local noadj  = cond(regexm("`3'", "noadj[a-z]*"), "noadjust", "")
+        
     // Files to save the results
     tempfile basechaz   // UoA = _t-trans pairings
     tempfile hazrat     // UoA = _t-from-to triples (b/c of possibility of trSp effects)
+    
+    // Pull any info on frailty term
+    if("`e(shared)'"!=""){
+        // * Do it the fast way via offset
+        if("`seyes'"==""){
+            tempvar reestOffset
+            predict double `reestOffset', effects                 
+                // In case there's already an offset variable
+                if("`e(offset)'"!="")      replace `reestOffset' = `reestOffset' + `e(offset)'
+            
+            * frailty/offset opts
+            local reest_fr = ""
+            local reest_off = "`reestOffset'"
+            * populate shortcut macro
+            local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
+        }
+        // * Do it the long way and reestimate
+        else{
+            * frailty/offset opts
+            local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
+            local reest_off = "`e(offset)'"
+            * populate the shortcut macro with nothing
+            local reest_shtct = ""
+        }
+        local reest_tr = ""	// no strata currently possible if frailty term present.
+
+        // If we're doing it the long way, give user an apology message
+        if("`seyes'"!=""){
+            noi di _n as ye "> NOTE: " as gr ///
+              "Your model has a frailty term and you have specified the {bf:seyes} option.  {bf:mstsample} reestimates your model using "
+            noi di as gr _col(9) /// 
+              "demeaned covariates to obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual "
+            noi di as gr _col(9)  ///   
+              "quick shortcut to do this when a frailty term and {bf:seyes} are both present--it has to reestimate your entire model."
+            noi di as gr _col(9)  ///
+              "As a result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
+        }
+    }
+    else{
+        local reest_fr = ""
+        local reest_tr = "strata(`trans')"
+        local reest_off = "`e(offset)'"
+        local frVal = 0	// nothing to add, if this isn't a frailty model
+        local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
+    }
+    // manual sample flag (JIC)
+    tempvar flag19
+    gen `flag19' = e(sample)
         
 	// NON-PARAMETRIC 
 	if(colsof(`skm_b')==0){
+        // Demean offset + reestimate, if present
+        if("`e(offset)'"!=""){
+            tempvar offsetDemean
+            gen double `offsetDemean' = `reest_off' - `offsetMn'  
+            
+            // REESTMATE
+            tempname origCox
+            _estimates hold `origCox', restore copy
+            
+            // REESTIM
+            stcox if(`flag19'==1), ///
+                `tieType' `reest_tr' `reest_fr' ///
+                offset(`offsetDemean') ///
+                vce(`e(vce)' `e(clustvar)') `noadj' ///
+                iter(0) norefine		// to speed things along
+        } 
+                
+		
         // Shift to straight N-A from stcox (will have issues incorporating 
         // frail +/or offset, otherwise)
         predict double `H0', basechaz
-        
+
             // [ST] v17, p. 152: predict..., basechaz after stcox will produce 
             // Nelson-Aalen estimate of H(t) "when [the model is] estimated 
             // with no covariates".  (*And* the tie correction's Breslow -> KEY.)
 
+        // If offset present, restore original model results
+        if("`e(offset)'"!="")   _estimates unhold `origCox'
+        
         // Save baseline haz
         preserve
             drop if `H0'==. 
@@ -490,11 +568,7 @@ qui{
         restore
 	}
 	// SEMI-PARAMETRIC
-	else{
-        // manual sample flag (JIC)
-		tempvar flag19
-		gen `flag19' = e(sample)
-        
+	else{       
         // If there are collapsed transitions, detect any gaps in t coverage.
         // (Won't matter for NP b/c you already manually add h(t) within strata
         // to get H(t).)
@@ -582,54 +656,6 @@ qui{
             }
         }
 		
-        // Pull info on noadj, since no other way to recover
-        tokenize "`e(cmdline)'", parse(",")
-        local noadj  = cond(regexm("`3'", "noadj[a-z]*"), "noadjust", "")
-        
-		// Pull any info on frailty term
-		if("`e(shared)'"!=""){
-            // * Do it the fast way via offset
-            if("`seyes'"==""){
-                tempvar reestOffset
-                predict double `reestOffset', effects                 
-                    // In case there's already an offset variable
-                    if("`e(offset)'"!="")      replace `reestOffset' = `reestOffset' + `e(offset)'
-                
-                * frailty/offset opts
-                local reest_fr = ""
-                local reest_off = "`reestOffset'"
-                * populate shortcut macro
-                local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
-            }
-            // * Do it the long way and reestimate
-            else{
-            	* frailty/offset opts
-                local reest_fr = "shared(`e(shared)') forceshared"	// in case this is start/stop
-                local reest_off = "`e(offset)'"
-                * populate the shortcut macro with nothing
-                local reest_shtct = ""
-            }
-			local reest_tr = ""	// no strata currently possible if frailty term present.
-
-            // If we're doing it the long way, give user an apology message
-            if("`seyes'"!=""){
-                noi di _n as ye "> NOTE: " as gr ///
-                  "Your model has a frailty term and you have specified the {bf:seyes} option.  {bf:mstsample} reestimates your model using "
-                noi di as gr _col(9) /// 
-                  "demeaned covariates to obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual "
-                noi di as gr _col(9)  ///   
-                  "quick shortcut to do this when a frailty term and {bf:seyes} are both present--it has to reestimate your entire model."
-                noi di as gr _col(9)  ///
-                  "As a result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
-            }
-		}
-		else{
-			local reest_fr = ""
-			local reest_tr = "strata(`trans')"
-			local frVal = 0	// nothing to add, if this isn't a frailty model
-			local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
-		}
-		
 		// Get list of TICs for demeaning (needed regardless of whether TVCs present)
 		if(`tvc'==.)	matrix coleq `skm_b' = "main"		// if there are no TVCs, main eq won't have a name.  Fix that.
 		tempname skm_tic
@@ -643,7 +669,17 @@ qui{
 			covarDemean mstcovarVals_means `x' ``x'Dem' `thePairings' "`namesB'" "dem"
 			local ticDemean = "`ticDemean' ``x'Dem'"
 		}
-			
+                // Demean offset, if present
+                if("`e(offset)'"!=""){
+                    tempvar offsetDemean
+                    gen double `offsetDemean' = `reest_off' - `offsetMn'  
+                    
+                    local offsetNm `offsetDemean'
+                } 
+                else{
+                    local offsetNm `reest_off'
+                }
+                
 		// REESTMATE
         tempname origCox
         _estimates hold `origCox', restore copy
@@ -652,7 +688,7 @@ qui{
 			** REESTIMATE WITH DEMEANED		- 20FEB19
 			stcox `ticDemean'  if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
-						offset(`reest_off') ///
+						offset(`offsetNm') ///
 						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct'		// to speed things along
 			
@@ -768,7 +804,7 @@ qui{
 
 				stcox `ticDemean' `tvcStrDemean' if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
-						offset(`reest_off') ///
+						offset(`offsetNm') ///
 						vce(`e(vce)' `e(clustvar)') `noadj' ///
 						`reest_shtct' // *should* be fine, since TICs and TVCs will be in same order as the skm_b matrix
 				
@@ -910,9 +946,9 @@ qui{
 
 		}
         _estimates unhold `origCox'
-        cap drop `flag19'
 	}
-	
+	cap drop `flag19'
+    
 	noi di _n as gr "Please wait.  Computing hazards" _c		// display message
 	
     // Bring back in the merged datasets to get our unique list
@@ -924,6 +960,7 @@ qui{
         else{
             gduplicates drop _t `from' `to', force
             gen double `hr' = exp(`frVal' + `offVal') // if you ever allow different offset values for different transitions, will need to revisit this decision (here and elsewhere)
+        
         }
         
         // BASELINE HAZARD
