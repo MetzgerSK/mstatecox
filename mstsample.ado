@@ -883,7 +883,17 @@ qui{
                         // TVC's pseudo-linear combo times time's functional form
                         replace `xbTVC' = `xbTVC' * `texp'
                     
-                    gcollapse (mean) `basehc' `xbTIV' `xbTVC' `trans' `thePairings' (max) _d, by(_t `from' `to')
+                    // With Stata 17's speedups, MP's implementation of collapse 
+                    // can be up to two times faster than gcollapse "with many 
+                    // cores available", per gtools' GitHub readme (17 BE/SE =
+                    // still same).  Bank off those gains, in case they matter.
+                    * Use actual Stata version (not what's version controlled) +
+                    * # of processors Stata's been set to use (which may not be
+                    * c(processors_lic), if user's done a set processor stmt)
+                    local collCmd = cond(`c(stata_version)'>=17 & `c(processors)'>=6, ///       // 6 or more's guestimated 
+                                        "collapse", "gcollapse")
+                    
+                    `collCmd' (mean) `basehc' `xbTIV' `xbTVC' `trans' `thePairings' (max) _d, by(_t `from' `to')
                     
                     // Get the final prediction for H0.
                     tempvar pieces H
