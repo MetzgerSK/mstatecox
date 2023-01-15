@@ -35,11 +35,15 @@
 {synopt :{opt draw(varname)}}special exception case; enables {bf:mstdraw} to graph saved {bf:mstsample} results, where {it:varname} = transition ID variable.  Should only be used for this purpose.{p_end}
 {synoptline}
 
-{p 4 6 2}
-Must first estimate {help stcox} before running {bf:mstutil}.  {bf:stcox}'s {bf:strata()} option must also be specified, unless {bf:mstutil}'s {bf:sdur} specified. {p_end}
+{p 4 4 2}
+Must first estimate {help stcox} before running {bf:mstutil}.  {bf:stcox}'s {bf:strata()} option must also be specified, unless {bf:mstutil}'s {bf:sdur} is specified. {p_end}
 
-{p 4 6 2}
-Transition and stage identifiers must have integer values.  Additionally, the lowest stage identifier's value must be equal to 1, and all other stage identifiers must be sequential integers in increments of one.  If any of these conditions are not met, Stata will return an error message.{p_end}
+{p 4 4 2}
+Transition and stage IDs must have integer values.  Additionally, the lowest stage ID's value must equal 1, and all other stage ID values must be sequential integers in increments of one.  
+If any of these conditions are not met, Stata will return an error message.{p_end}
+
+{p 4 4 2}
+The transition ID's values do not need to be sequential.  They only need to be integer values, as mentioned above.{p_end}
 
 
 {marker description}{...}
@@ -55,7 +59,7 @@ and Metzger 2018, Supplemental Appendix A; de Wreede, Fiocco, and Putter 2010).
 {title:Remarks}
 
 {p 4 6 2}
-The transition, from, and to variables that {opt sdur} creates are named {bf:trans__ms}, {bf:to__ms}, and {bf:from__ms}, respectively.{p_end}
+The transition, from, and to ID variables that {opt sdur} creates are named {bf:trans__ms}, {bf:from__ms}, and {bf:to__ms}, respectively.{p_end}
 
 
 {marker examples}{...}
@@ -147,6 +151,6 @@ The transition, from, and to variables that {opt sdur} creates are named {bf:tra
 
 
 {p 0 0 0}
-{bf:Last Updated} - 24AUG22
+{bf:Last Updated} - 15JAN23
 {p_end}
 
