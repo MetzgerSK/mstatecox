@@ -441,11 +441,13 @@ qui{
 	
     // Get frailty value
     if("`e(shared)'"!=""){
-        local frVal = $mstcovar_lFr
-        local frNote = ""
-        if("`frVal'"==""){
+        if("$mstcovar_lFr"==""){
             local frVal = 0	        // if no log-frailty given, set to 0
             local frNote "> No log-frailty value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample} (implies frailty = 1)."	// populate the end-of-estm FYI message
+        }
+        else{
+            local frVal = $mstcovar_lFr
+            local frNote = ""
         }
     }
     // If no frailty, frVal=0
@@ -458,11 +460,13 @@ qui{
         local offsetMn = `r(mean)'
 
         // Convert inputted offset value to its demeaned equivalent
-        local offVal = $mstcovar_offset - `offsetMn'
-        local offNote = ""
-        if("`offVal'"==""){
+        if("$mstcovar_offset"==""){
             local offVal = 0 - `offsetMn'	// if no offset given, set to 0
             local offNote "> No offset value set using {bf:mstcovar}.  Value held at 0 by {bf:mstsample}."	// populate the end-of-estm FYI message
+        }
+        else{
+            local offVal = $mstcovar_offset - `offsetMn'
+            local offNote = ""
         }
     }    
     // If no offset value set, offVal=0
