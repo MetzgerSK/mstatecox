@@ -2361,11 +2361,12 @@ program path2stage
 				local nonUnique = 1
 				
 				while(`nonUnique'==1){
-					local rand = runiformint(0,10000)		// eh--not perfect, but there's no helping it, at this exact moment (rngstate will be same, for every run through, if the user's set seed right before mstsample's called)
+					// And just to absolutely ENSURE this is a unique name
+                    tempname closer2
 					
-					cap confirm new file "`folder'`c(dirsep)'sim`sim'_`rand'.dta"
+					cap confirm new file "`folder'`c(dirsep)'sim`sim'_`closer2'.dta"
 					if(_rc==0) {
-						save "`folder'`c(dirsep)'sim`sim'_`rand'.dta"
+						save "`folder'`c(dirsep)'sim`sim'_`closer2'.dta"
 						local nonUnique = 0
 					}
 				}
