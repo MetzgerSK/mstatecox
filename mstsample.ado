@@ -875,7 +875,14 @@ qui{
                     save `hazrat', replace	
                 }
                 else{
-                    keep _t _d `from' `to' `trans' `H0' `hr' `thePairings' `sorter'
+
+                    char _dta[st_id] "`stID_ch'"    // setting ID to prev
+                    
+                    if(`tvc'==.)    local varlist `H0' `hr' `sorter'
+                    else            local varlist `H'
+                    
+                    keep _t _d `from' `to' `trans' `thePairings' `varlist'
+                    
                     // Will need to do a few extra steps, so save a temp file
                     tempfile stuff
                     save `stuff'
@@ -889,19 +896,21 @@ qui{
                 preserve
                     // H0
                     use `stuff', clear
-                    drop if `H0'==.
+                    local var = cond(`tvc'==., "`H0'", "`H'")
+                    drop if `var'==.
+                    if(`tvc'!=.)    gen `sorter' = _n
                     tempvar flagFirst anyFail
                     bysort `trans' _t: egen `anyFail' = max(_d)
                     bysort `trans' _t (`sorter'): gen `flagFirst' = _n
                     keep if _d==1 | (`anyFail'==0 & `flagFirst'==1)
                     gduplicates drop _t `trans', force
-                    drop `hr' `from' `to'
+                    drop `=cond(`tvc'==.,"`hr'", "")' `from' `to'
                     save `basechaz', replace
                     
                     // HR
                     use `stuff', clear
                     gduplicates drop _t `from' `to', force
-                    drop `H0'
+                    cap drop `H0'
                     save `hazrat', replace
                 restore
             }
@@ -985,12 +994,11 @@ qui{
 		sort `refTrans' `refFrom' `refTo' `refT'
 		
         tempfile msfit2
+        stset, clear
 		save `msfit2', replace
 		local mrgSize = `c(N)'
-
     restore
- 
- 
+
 	noi di as gr "." _c			// display message
 
 	// Second, generate the holder variables.  **NOTE: if gen's on at the end, keep them.
