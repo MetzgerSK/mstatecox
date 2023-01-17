@@ -483,7 +483,7 @@ qui{
     // Pull any info on frailty term
     if("`e(shared)'"!=""){
         // * Do it the fast way via offset
-        if("`seyes'"==""){
+        if("`seyes'"=="" & `tvc'==.){
             tempvar reestOffset
             predict double `reestOffset', effects                 
                 // In case there's already an offset variable
@@ -506,13 +506,21 @@ qui{
         local reest_tr = ""	// no strata currently possible if frailty term present.
 
         // If we're doing it the long way, give user an apology message
-        if("`seyes'"!=""){
+        if("`seyes'"!="" | `tvc'!=.){
+            if(`tvc'!=.){
+                local relvCond = "tvc()"
+                local relvArt = "{bf:stcox}'s"
+            }
+            else{
+                local relvCond = "seyes"
+                local relvArt = "the"
+            }
             noi di _n as ye "> NOTE: " as gr ///
-              "Your model has a frailty term and you have specified the {bf:seyes} option.  {bf:mstsample} reestimates your model using "
+              "Your model has a frailty term and you have specified `relvArt' {bf:`relvCond'} option.  {bf:mstsample} reestimates your model using "
             noi di as gr _col(9) /// 
               "demeaned covariates to obtain more stable estimates of the baseline cumulative hazard.  It cannot use its usual "
             noi di as gr _col(9)  ///   
-              "quick shortcut to do this when a frailty term and {bf:seyes} are both present--it has to reestimate your entire model."
+              "quick shortcut to do this when a frailty term and {bf:`relvCond'} are both present--it has to reestimate your entire model."
             noi di as gr _col(9)  ///
               "As a result, the prep stage before computing the hazard may take noticeably longer than it would otherwise."
         }
