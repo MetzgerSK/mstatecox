@@ -2008,7 +2008,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 				} 
 				
 				// if tStar==. 
-				else{	// complements of the HoR troubleshoot.
+				else{	// compliments of the HoR troubleshoot.
 					tStar = tMax_inputted					
 					absorb = 1
 					break
