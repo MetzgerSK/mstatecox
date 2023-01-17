@@ -1461,7 +1461,7 @@ qui{
 				
 				* path -> stage
 				tempfile stageFile
-				path2stage, paths("`postFile'") stages("`stageFile'") sim(10000) names("`postVarNames'") fhorz("`fixedhorz'") tmax(`tmax')
+				path2stage, paths("`postFile'") stages("`stageFile'") tmax(`tmax') sim(10000) names("`postVarNames'") fhorz("`fixedhorz'") 
 				
 				* stage -> counts
 				tempfile countFile
@@ -1503,7 +1503,7 @@ qui{
 				qui gen double ``gen'_Rslt_stage`s'_ub' = .
 				
 				if(`tPoints'>`c(N)')	set obs `tPoints'
-					local tMaxInt = floor(`tmax')	// jic of non-integer times  (might be better to floor, not ceil => PONDER)
+					local tMaxInt = floor(`tmax')	// jic of non-integer times  (might be better to floor, not ceil [true if we were calling `tMax_inputted', but floor better for `tmax'])
 				qui gegen ``gen'_Rslt_t' = seq() in 1/`tPoints', from(`stime') to(`tMaxInt') block(1)
 				
 				* fill in the mean/percentiles
@@ -1727,6 +1727,34 @@ qui{
 	if("`path'"!=""){		// if the user wants the path variables, export those
 		if(`keepHolders'==0)	noi di _n _c as gr "Saving requested output to dataset..."
 		
+       // Trim from tMax_inputted + 1 to tMax_inputted
+        local path_fName = cond(`overall'/5<`pathTrigger', "`postFile'", "`jicFile.dta'")
+        local relv_simID = cond(`overall'/5<`pathTrigger', "`simNo_outpt'", "`path'_simNm")
+        local relv_idVar = cond(`overall'/5<`pathTrigger', "`subj_outpt'", "`path'_id")
+        local relv_tVar  = cond(`overall'/5<`pathTrigger', "`t_outpt'", "`path'_t")
+        preserve
+            use "`path_fName'", clear
+            tempvar flag
+            gen `flag' = .
+            
+            // keep everything that's less than the inputted tmax
+            replace `flag' = 1 if(`relv_tVar' < `tMax_inputted')    
+            
+            // for anything greater than the inputted tmax, keep the smallest
+            // of the obsvs. for each simNm-subj pairing
+            bysort `relv_simID' `relv_idVar' ///
+                      `flag' (`relv_tVar'): replace `flag' = 1 if(_n==1)
+            
+            // Drop
+            keep if `flag'==1
+            replace `relv_tVar' = `tMax_inputted' if(`relv_tVar'>`tMax_inputted')   // force largest value to be tMax_inputted
+
+            // Tidy
+            drop `flag'
+            compress
+            save "`path_fName'", replace
+        restore
+        
 		if(`overall'/5<`pathTrigger'){	
 			merge 1:1 _n using `postFile', nogen
 			
