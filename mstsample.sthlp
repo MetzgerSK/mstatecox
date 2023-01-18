@@ -1,7 +1,8 @@
 {smcl}
-{* *! version 29jul2022}{...}
+{* *! version 06jan2023}{...}
 {viewerjumpto "Syntax" "mstsample##syntax"}{...}
 {viewerjumpto "Description" "mstsample##description"}{...}
+{viewerjumpto "Calculation-Related Information" "mstsample##calcInfo"}{...}
 {viewerjumpto "Options" "mstsample##options"}{...}
 {viewerjumpto "slicetrigger Remarks" "mstsample##slicetrigDetails"}{...}
 {viewerjumpto "Examples" "mstsample##examples"}{...}
@@ -96,6 +97,18 @@ The command's name is a hattip to R-mstate's mssample command, as the commands p
 Stata's {bf:mstsample} with {bf:sims(1)} is the same as a single call of R-mstate's mssample.{p_end} 
 {pstd}
 {bf:mstsample} is a simulation command.  If you want to reproduce the exact same results in the future, you should {help set seed} before executing the command. {p_end}
+
+
+{marker calcInfo}{...}
+{title:Calculation-Related Information}
+
+{pstd}See remarks in {helpb mstcovar##remarks:mstcovar}'s help file.{p_end}
+
+{pstd}For non-parametric models, {bf:mstsample} generates the baseline cumulative hazard using {cmd:stcox}'s {cmd:predict}.  
+This is equivalent to the Nelson-Aalen estimate (Metzger and Jones 2018, fn. 5) when no tied failure times are present or if Breslow ties are used ({manlink ST stcox postestimation}, "Methods and Formulas" for H_0(t)).  
+The Nelson-Aalen formula treats ties in the same manner as the Breslow correction: it does not adjust risksets for tied times ({manlink ST sts}, "Methods and Formulas" for Nelson-Aalen).{p_end}
+
+{pstd}For viewing the predicted quantities {bf:mstsample} uses to calculate its transition probabilities, see {bf:mstsample}'s {helpb mstsample##optionsMsfit:msfit} option.{p_end}
 
 
 {marker options}{...}
@@ -224,6 +237,7 @@ output is processed, NOT how the simulations themselves are executed (which rema
 It will not save variables with each simulation-subject-time point triplet ({opt gen()} variables with "SIMS: *" labels).  {opt path()} is an {help mstsample##pathSpeedClash:impermissible option} with {opt speed}.{p_end}
 
 {dlgtab:Troubleshoot}
+{marker optionsMsfit}{...}
 
 {phang}{opt msfit} will save {bf:mstsample}'s internal matrix of survivor and hazard values, used for the simulations, before enforcing {opt hazoverride}.  Specifically, the matrix contains these quantities, in the following order:{p_end}
 
@@ -494,6 +508,5 @@ enforcing the {opt hazoverride} option, if specified.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 29JUL22
+{bf:Last Updated} - 06JAN23
 {p_end}
-

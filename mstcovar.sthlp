@@ -1,10 +1,12 @@
 {smcl}
-{* *! version 21jun2022}{...}
+{* *! version 06jan2023}{...}
 {viewerjumpto "Syntax" "mstcovar##syntax"}{...}
 {viewerjumpto "Description" "mstcovar##description"}{...}
+{viewerjumpto "Remarks" "mstcovar##remarks"}{...}
 {viewerjumpto "Options" "mstcovar##options"}{...}
 {viewerjumpto "Examples" "mstcovar##examples"}{...}
 {viewerjumpto "Stored results" "mstcovar##results"}{...}
+{viewerjumpto "References" "mstcovar##references"}{...}
 {viewerjumpto "Citation" "mstcovar##cite"}{...}
 
 {vieweralsosee "mstatecox Commands: Overview" "help mst"}{...}
@@ -29,13 +31,13 @@
 {synopthdr}
 {synoptline}
 {syntab:Required}
-{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless (1) {opt frailty} specified, (2) {opt offset} specified, or (3) {opt sdur} specified for {cmd:mstutil}{p_end}
+{synopt :{opt n:ames(varlist)}}the transition-specific variable names associated with {it:varname}; required unless (1) {opt frailty} specified, (2) {opt offset} specified, or (3) {cmd:mstutil, }{opt sdur} specified{p_end}
 
 {syntab:Optional}
 {synopt :{opt v:alue(stats)}}value at which the variable(s) in question should be held, default is median.  If {opt frailty} specified, represents the log-frailty's value.  If {opt offset} specified, represents the offset's value.{p_end}
 {synopt :{opt rep:lace}}required if defining a new transition-specific covariate list for a previously {bf:mstcovar}-set {it:varname}{p_end}
 {synopt :{opt fr:ailty}}{opt value()}'s {it:stats} represents the log-frailty's value; default value is 0.  Relevant only if {opt shared()} specified for {cmd:stcox}.{p_end}
-{synopt :{opt offs:et}}{opt value()}'s {it:stats} represents the offset's value; default value is 0.  Relevant only if {opt offset()} specified for {cmd:stcox}.{p_end}
+{synopt :{opt offs:et}}{opt value()}'s {it:stats} represents the offset's value and is applied to all transitions; default value is 0.  Relevant only if {opt offset()} specified for {cmd:stcox}.{p_end}
 {synopt :{opt esamp:le}}restrict {opt value(stats)} to the estimation sample, if relevant{p_end}
 {synopt :{opt clear}}clears all {bf:mstcovar}-related information from memory; supersedes all other options, if specified{p_end}
 {synoptline}
@@ -70,6 +72,39 @@ We {it:{opt strongly}} recommend **always** inserting {bf: mstcovar, clear} befo
 typing {bf:clear *} in Stata.  {bf: mstcovar, clear} is the only way to ensure you are beginning with a clean slate.{p_end}
 
 
+{marker remarks}{...}
+{title:Calculation-Related Remarks}
+
+{pstd}
+{helpb mstsample} calculates transition probabilities by way of the cumulative hazard for each from-to stage pairing (H(t)_q):
+{p_end}
+
+	H(t)_q = H_0(t)_q * exp([main covariates] + [time-varying effects] + log-frailty + offset)
+	
+{pstd}
+where:
+{p_end}
+{p 8 10 2}- q: from-to stage pairing.  If there are no collapsed transitions, q = transition ID.{p_end} 
+{p 8 10 2}- H_0(t)_q: q's baseline cumulative hazard, from either (a) {helpb stcox postestimation##predict:predict, basec} (no {bf:tvc()}s in model) or (b) calculated manually from {helpb help stcox postestimation##predict:predict, basehc}, 
+the baseline hazard contributions ({bf:tvc()}s in model).{p_end}
+
+{p 8 10 2}- main covariates: sum of all b_q*x_q in {cmd:stcox}'s {bf:main} equation; is set to 0 for non-parametric models{p_end}
+
+{p 8 10 2}- time-varying effects: if {cmd:stcox, tvc()} specified, sum of bTVC_q*xTVC_q*g(t) for covariates appearing in {cmd:stcox}'s {bf:tvc} equation, where g(t) is the time function specified in 
+{cmd:stcox, texp()}; is set to 0 for models with no {bf:tvc()}{p_end}
+
+{p 8 10 2}- log-frailty: if {cmd:stcox, shared()} specified, value specified by {cmd:mstcovar, v() frailty}; is set to 0 for models without a frailty term{p_end}
+
+{p 8 10 2}- offset: if {cmd:stcox, offset()} specified, value specified by {cmd:mstcovar, v() offset}; is set to 0 for models without an offset
+{p_end}
+
+{pstd}{bf:mstcovar} sets the value for every covariate in {bf:stcox}'s {bf:main} or {bf:tvc} (if present) equations, the log-frailty (if present), and the offset (if present).{p_end}
+
+{pstd}In {bf:mstatecox}'s original release, {bf:mstsample} calculated H_q(t) via S_q(t) (Metzger and Jones 2018, 536).  
+This changed in {bf:mstsample}'s st0534_1 update {browse "https://github.com/MetzgerSK/mstatecox/releases/tag/st0534_1":(x)}.  
+Otherwise, Metzger and Jones (2018)'s description of {bf:mstsample}'s subsequent calculations using H_q(t) continues to be accurate, as of {help mstcovar##lastUpdated:this writing}.{p_end}  
+
+
 {marker options}{...}
 {title:Options}
 
@@ -95,12 +130,12 @@ You may want to override an existing list if you previously entered the list inc
 	for {it:varname}, compare {it:varname}'s new list to {it:varname}'s list in memory, see the two are not the same, and throw an error.{p_end}  
 {pmore}As a corollary, for convenience, you could enter the same list of covariates over and over again in {bf:names()} {it:without} specifying {bf:replace}, since there are no differences between your 'new' list and the list in memory.{p_end}
 	
-{phang}{opt fr:ailty} signifies that the specified {opt value()} is for the log-frailty term (also known as the random effect), which is added to the linear combination (XB + log-frailty).  
+{phang}{opt fr:ailty} signifies that the specified {opt value()} is for the log-frailty term (also known as the random effect), which is {help mstcovar##remarks:added to} the linear combination.  
 The log-frailty = {opt value()} implies that the frailty = exp({opt value}).  If no log-frailty value is set by {cmd:mstcovar}, {cmd:mstsample} will automatically set the log-frailty to 0, the log-frailty's mean.  
 If you specify {opt frailty} but also give a {cmd:tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.  
 If you specify both {opt frailty} and {opt offset} in one {cmd:mstcovar} call, {cmd:mstcovar} will throw an error.{p_end}
 
-{phang}{opt offs:et} signifies that the specified {opt value()} is for the offset term, which is added to the linear combination (XB + offset).  
+{phang}{opt offs:et} signifies that the specified {opt value()} is for the offset term, which is {help mstcovar##remarks:added to} the linear combination.  The same offset is applied to all transitions; transition-specific offsets are not currently supported. 
 If no offset value is set by {cmd:mstcovar}, {cmd:mstsample} will automatically set the offset to 0.  
 If you specify {opt offset} but also give a {cmd:tabstat} {it:stat} inside of {opt value()}, {cmd:mstcovar} will throw an error.  
 If you specify both {opt frailty} and {opt offset} in one {cmd:mstcovar} call, {cmd:mstcovar} will throw an error.{p_end}
@@ -225,15 +260,22 @@ If {opt esample} is specified, {cmd:tabstat} computes the requested statistic us
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: {help  matrix utility:Matrices}}{p_end}
 {synopt:{cmd:mstcovarVals}}covariate values for inputted covariate lists{p_end}
-{synopt:{cmd:mstcovarVals_means}}mean covariate values for estimation sample for mstsample's demeaning{p_end}
+{synopt:{cmd:mstcovarVals_means}}mean covariate values within overall estimation sample; used by {cmd:mstsample}{p_end}
 
 
 {marker cite}{...}
 {title:Citation}
 
-{pstd}See the {help mst##cite:mst} help file.{p_end}
+{pstd}See the {helpb mst##cite:mst} help file.{p_end}
+
+
+{marker references}{...}
+{title:References}
+
+{pstd}Metzger, Shawna K., and Benjamin T. Jones.  2018.  "mstatecox: A Package for Simulating Transition Probabilities from Semiparametric Multistate Survival Models."  {it:Stata Journal} 18 (3): 533–563.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 21JUN22
+{marker lastUpdated}{...}
+{bf:Last Updated} - 06JAN23
 {p_end}
