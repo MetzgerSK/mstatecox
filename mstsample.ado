@@ -1336,11 +1336,11 @@ qui{
 	
 		* tempvar names, because otherwise you may have a merge nightmare on your hands
 		tempname simNo_outpt subj_outpt t_outpt stg_outpt flag_outpt
-		local postVarNames = "`simNo_outpt' `subj_outpt' `t_outpt' `stg_outpt' `flag_outpt'"
+		local postVarNames = "`simNo_outpt' `subj_outpt' double(`t_outpt') `stg_outpt' `flag_outpt'"
 		
 	// The ALWAYS post file
 	cap postclose `postName'
-	postfile `postName' `simNo_outpt' `subj_outpt' `t_outpt' `stg_outpt' `flag_outpt' using `postFile', replace
+	postfile `postName' `simNo_outpt' `subj_outpt' double(`t_outpt') `stg_outpt' `flag_outpt' using `postFile', replace
 
 		
 	// The post file that'll reset after every draw, for the big datasets	
@@ -1358,7 +1358,7 @@ qui{
 		tempfile postFile_draw
 		
 		cap postclose `postName_draw'
-		local fullPost_draw = "postfile `postName_draw' `simNo_outpt' `subj_outpt' `t_outpt' `stg_outpt' `flag_outpt' using `postFile_draw', replace"
+		local fullPost_draw = "postfile `postName_draw' `simNo_outpt' `subj_outpt' double(`t_outpt') `stg_outpt' `flag_outpt' using `postFile_draw', replace"
 		`fullPost_draw'
 		
 		
