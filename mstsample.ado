@@ -41,7 +41,11 @@ qui{
                                               
         // Note: seyes = the coefficient SEs are relevant.  This is looking ahead to some 
         //               future potential functionality.  Specifying it now will do nothing,
-        //               because the SEs aren't involved in the default trPr uncertainty calc.                                      
+        //               because the SEs aren't involved in the default trPr uncertainty calc.  
+        //               Note that, when the model originally has no strata variable in it,
+        //               reestimating the demeaned model (which tends to include a fake strata
+        //               variable in its specification) will produce matching coefficients, but 
+        //               NOT matching standard errors, necessarily.
 	
         // dem_debug: for the unit tests involving the demeaned Cox model
     
@@ -532,6 +536,11 @@ qui{
         local frVal = 0	// nothing to add, if this isn't a frailty model
         local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
     }
+    
+    // Before msfit manips, save copy of the data to restore later
+    snapshot save, label("pre-msfit preserve")
+    local snapNum = `r(snapshot)'
+    
     // manual sample flag (JIC)
     tempvar flag19
     gen `flag19' = e(sample)
@@ -971,6 +980,10 @@ qui{
         _estimates unhold `origCox'
 	}
 	cap drop `flag19'
+    
+    // Restore data to pre-msfit state
+    snapshot restore `snapNum'
+    snapshot erase `snapNum'
     
 	noi di _n as gr "Please wait.  Computing hazards" _c		// display message
 	
