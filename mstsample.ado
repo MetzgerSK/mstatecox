@@ -846,7 +846,8 @@ qui{
 	// Or maybe just leave this loop in here for all the naming of things, to ensure there's no name conflict before the simulations.
 	if(_rc==0 & `keepHolders'==1){	// kick error if the holder variables need to be saved, but var w/the name already exists
 		noi di _n as err "{bf:gen()} specified to save simulation output as variables.  However, variable named `errMsg' already exists.  Please drop variable and try again."
-		exit 110
+		tidy `sorter'
+        exit 110
 	}
 	
 	
@@ -859,7 +860,8 @@ qui{
 		}
 		if(_rc==0){	// kick error if the holder variables need to be saved, but var w/the name already exists
 			noi di _n as err "{bf:path()} specified to save path output as variables.  However, variable named `errMsg' already exists.  Please drop variable and try again."
-			exit 110
+			tidy `sorter'
+            exit 110
 		}
 	}
 	
@@ -1018,7 +1020,7 @@ qui{
 			noi di _n as err "{it:If} you wish to persist with this model specification, specify {bf:hazoverride} as an option for mstsample."
 			noi di as err "It will force all stages' outward transition hazards to sum to 1 by manually rescaling the hazards, keeping their proportions to each other intact.  **" as ye "DO SO AT YOUR OWN RISK" as err "**."
 			
-			tidy
+			tidy `sorter'
 			exit 125
 		}
 		else{
@@ -1043,7 +1045,7 @@ qui{
 			noi di _n as err "{it:If} you wish to persist with this model specification, specify {bf:hazoverride} as an option for mstsample."
 			noi di as err "It will force all stages' outward transition hazards to sum to 1 by manually rescaling the hazards, keeping their proportions to each other intact.  **" as ye "DO SO AT YOUR OWN RISK" as err "**."
 			
-			tidy
+			tidy `sorter'
 			exit 125
 		}
 		else{
@@ -1213,7 +1215,7 @@ qui{
 		
 		local mataSv = 0					// sticking this here, for now.
 		local pathTrigger = `slicetrigger'	// how many path observations (which will be imperfect, because cannot tell how many path obsvs without opening the dataset.)
-												// To get at this, going with "overall \ 5" for a rough, rough estimate (when this condition's checked by ifs)
+												// To get at this, going with "overall / 5" for a rough, rough estimate (when this condition's checked by ifs)
 		
 		// Insert the slice and dice here, for instances where we'll have a super huge dataset with results.
 		* (also tell people that, if they want to save these results, we've had to write them to an outside dataset, just in case Stata goes bonko)
@@ -1333,7 +1335,7 @@ qui{
 				forvalues times = `stime'/`tMax_inputted'{
 					qui sum ``gen'_stage`s'' if(``gen'_t'==`times')
 					qui replace ``gen'_Rslt_stage`s'_m' = r(mean) if(``gen'_Rslt_t'==`times')
-					gquantiles ``gen'_stage`s'' if(``gen'_t'==`times'), _pctile p(`low' `high')				// think about adding in altdef eventually, to match what mm_quantiles kicks out
+					gquantiles ``gen'_stage`s'' if(``gen'_t'==`times'), _pctile p(`low' `high')		// matches what comes out of mm_quantile as is, w/o needing to add altdef
 					qui replace ``gen'_Rslt_stage`s'_lb' = r(r1) if(``gen'_Rslt_t'==`times')
 					qui replace ``gen'_Rslt_stage`s'_ub' = r(r2) if(``gen'_Rslt_t'==`times')
 				}
@@ -1576,8 +1578,12 @@ qui{
 	compress
 	
 	if("`dzone'"!="")	ereturn local datasignature "" // !! DANGER.  Resetting the data signature to what it was before you started mstsamp.
-	
-	
+    
+    // Restore previous return list results (don't use tidy function--will toss
+    // any extra rows you needed to append to store the final processed results)
+    _return restore $temp_mstsampleNm
+    macro drop temp_mstsampleNm
+    
 } // for bracket collapse in editor	
 end
 ********************************************************************************************************************************	
@@ -2445,10 +2451,10 @@ end
 * (Written in case I eventually realize there are other things that need tidied.)
 program tidy
 {
-	syntax ,
-	
-	cap drop if(`sorter'==.)
-	
+	args var1 
+    
+	cap drop if(`var1'==.)
+    
 	// sortpreserve on mstsample will return the data to original order
 	
 	// getting a list of Mata objects is apparently more of chore than I expected.
