@@ -736,7 +736,7 @@ qui{
             tempvar xbTIV
                 // Fill TICs w/mstcovar-set values
                 foreach x of local namesTIC{
-                    covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                    covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesTIC'"
                 }
             matrix sco double `xbTIV' = `skm_b', eq("main") 
 
@@ -843,7 +843,7 @@ qui{
                     // Also need to do the HR here, for the same reason as the
                     // pure TVC case.
                     foreach x of local namesTIC{
-                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesTIC'"
                     }
                     
                     // Gen linear combo
@@ -875,14 +875,14 @@ qui{
                     // Fill TIC first (and since demeaned model is in memory, means 
                     // you have to fill in the demeaned vars for the prediction.)
                     foreach x of local namesTIC{
-                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesTIC'" 
                     }
                     
                     // Fill any TVCs not in TIC list next  
                     foreach v of local namesTVC{
                         // Ensure this TVC isn't in the TIC list.
                         if(regexm("`namesTIC' ", "`v' ")==0){
-                            covarFill `xvals' mstcovarVals_means `v' `thePairings' "`namesB'" 
+                            covarFill `xvals' mstcovarVals_means `v' `thePairings' "`namesTVC'" 
                         }
                     }
                         
