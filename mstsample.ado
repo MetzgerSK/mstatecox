@@ -678,7 +678,7 @@ qui{
 		local ticDemean = ""
 		foreach x of local namesTIC{
 			tempvar `x'Dem
-			covarDemean mstcovarVals_means `x' ``x'Dem' `thePairings' "`namesB'" "dem"
+			covarDemean mstcovarVals_means `x' ``x'Dem' `thePairings' "`namesTIC'" "dem" `sorter'
 			local ticDemean = "`ticDemean' ``x'Dem'"
 		}
                 // Demean offset, if present
@@ -800,7 +800,7 @@ qui{
                         ** demean the TVCs (MAY21)
                         if(regexm("`namesTIC' ", "`v' ")==0){ // Ensure this TVC isn't in the TIC list (is already demeaned, if so).
                             tempvar `v'Dem
-                            covarDemean mstcovarVals_means `v' ``v'Dem' `thePairings' "`namesB'" "dem"	
+                            covarDemean mstcovarVals_means `v' ``v'Dem' `thePairings' "`namesTVC'" "dem" `sorter'	
                         }
 
                         ** generate the temp names for interacts using demeaned
@@ -2760,12 +2760,12 @@ end
 // covarDemean: To be called within mstsample, specifically while demeaning the covariates for the stcox reest, to get best poss estimates of H0
 program covarDemean, sortpreserve
 {			
-	args matMeans x newX pairings covarNames dirOpt 
+	args matMeans x newX pairings covarNames dirOpt sorterVar
 		// matMeans:   matrix with the covar means
 		// x:		   current variable name
 		// newX:	   name for new variable containing the demeaned values
 		// pairings:   the name of the variable w/unique IDs for from-to pairs
-		// covarNames: string with ALL unique varnames in model, across both main + tvc
+		// covarNames: string with unique varnames FOR THIS EQUATION
 		// dirOpt:	   "dem" = demeaning the vars; "rem" = re-meaning (= readding mean)
 		
 		// Demeaning or remeaning?
@@ -2773,7 +2773,7 @@ program covarDemean, sortpreserve
 		else if("`dirOpt'"=="rem")	local dir = 1
 		else{
 			noi di _n as err `"Helper function error.  Invalid {bf:covarDemean} 'dirOpt' argument.  Can only be "dem" or "rem"."'
-			tidy
+			tidy `sorterVar'
             exit
 		}
 		
