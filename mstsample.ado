@@ -413,7 +413,7 @@ qui{
     // All of this is identical for forward vs. fixedh until *right* before the sim section starts.
 	tempvar sorter
 	gen `sorter' = _n
-	sort _t `from' `to'
+	sort _t `from' `to' `sorter'
 	
 **** // Zeroth, fill to the end. // ****
 	local tMax_inputted = `tmax'
@@ -430,8 +430,8 @@ qui{
 	qui glevelsof `thePairings', local(fromToPairsList)
 		local fromToPairs: list sizeof fromToPairsList
 		
-	* BASELINE HAZ
-	tempvar H0
+	* BASELINE HAZ, HAZ RAT
+	tempvar H0 hr
 
 	// In case reestimating's needed.  Just do this once, to reduce redundancy. 
 	if("`e(method)'"=="breslow")		local tieType = "breslow"
@@ -463,16 +463,122 @@ qui{
     // If no offset value set, offVal=0
     else    local offVal = 0
     
+    // Files to save the results
+    tempfile basechaz   // UoA = _t-trans pairings
+    tempfile hazrat     // UoA = _t-from-to triples (b/c of possibility of trSp effects)
+        
 	// NON-PARAMETRIC 
 	if(colsof(`skm_b')==0){
-		* BASELINE HAZARD 
-		qui predict double `H0', basechaz	
+        // Just overwrite everything in s0 after doing (# fails/#at risk) for each tr.
+		tempvar stshaz 
+		
+		// get basic haz, defined as # fails/# at risk
+		sts gen `stshaz' = h, by(`trans')	// needs to stay trans--represents the strata of interest
+		recode `stshaz' (.=0)
+		
+		// get Nelson-Aalen
+		tempvar intermed naH
+		bysort `trans' _t  : gen double `intermed' = `stshaz' if(_n==1)
+		bysort `trans' (_t): gen double `naH' = sum(`intermed')
+		
+		// 21FEB19 mod - keep in H0 form
+		gen double `H0' = `naH'
+		
+		cap drop `stshaz'
+		cap drop `intermed'
+		cap drop `naH'
+        
+        // Save baseline haz
+        preserve
+            drop if `H0'==. 
+            tempvar flagFirst anyFail
+            bysort `trans' _t: egen `anyFail' = max(_d)
+            bysort `trans' _t (`sorter'): gen `flagFirst' = _n
+            keep if _d==1 | (`anyFail'==0 & `flagFirst'==1)
+            gduplicates drop _t `trans', force
+            keep _t `trans' `H0' `anyFail'
+            save `basechaz', replace
+        restore
 	}
 	// SEMI-PARAMETRIC
 	else{
-		// manual sample flag (JIC)
+        // manual sample flag (JIC)
 		tempvar flag19
 		gen `flag19' = e(sample)
+        
+        // If there are collapsed transitions, detect any gaps in t coverage.
+        // (Won't matter for NP b/c you already manually add h(t) within strata
+        // to get H(t).)
+        // OBJECTIVE: find whether any gaps exist.  If so, split on fails within strata.
+        local chk_tGaps = ""    // "": no gaps to worry about (or no collapsed trs, making the edge case irrelevant); != "" list of macros, storing gaps-in-t value for from-to pair
+
+        if(`nTrans'!=`fromToPairs'){
+            mstdraw, tr post
+            
+            tempname stacked freqs
+            mata: `stacked' = vec(st_matrix("r(trMat)"))
+            mata: `stacked' = sort(`stacked'[selectindex(`stacked':!=.)],1) // to save time later
+            mata: `freqs' = mm_freq(`stacked')
+            mata: st_local("temp_noCollTrs", strofreal(allof(`freqs',1)))
+            
+            // We have collapsed trs--therefore, there's more to be done
+            if(`temp_noCollTrs'!=1){
+                mata: st_local("chk_collTrs", invtokens(strofreal(uniqrows(`stacked')[selectindex(`freqs':!=1)])))
+                
+                // For the collapsed trs
+                foreach trVal of local chk_collTrs{
+                    tempname allTs allTs_uniq trVal_Ts trVal_Ts_uniq
+                    putmata `allTs' = _t if(`trans'==`trVal'), replace
+                    mata: st_local("`allTs_uniq'", strofreal(mm_nunique(`allTs')))
+                    
+                    // Get list of pairings in this transition, see if the # of uniq
+                    // ts for the pairing matches the transition's # of uniq ts.  
+                    // (Throw to Mata, to avoid running into tab's limit.)  If no
+                    // match, gap exists.
+                    tempname trVal_pairLst
+                    glevelsof `thePairings' if(`trans'==`trVal'), local(`trVal_pairLst')
+                    foreach tP of local `trVal_pairLst'{
+                        putmata `trVal_Ts' = _t if(`thePairings'==`tP'), replace
+                        mata: st_local("`trVal_Ts_uniq'", strofreal(mm_nunique(`trVal_Ts')))
+
+                        * see if the locals match
+                        if(``allTs_uniq''!=``trVal_Ts_uniq''){
+                            local chk_tGaps = "`chk_tGaps' `trVal'"   // Add to list as a coll tr w/time gap issues
+                            local chk_tGaps: list uniq chk_tGaps
+                            
+                            // Store the gaps (check later to see whether splitting's
+                            // fixed the issue, and if not, add those obsvs)
+                            tempname tr`trVal'_tP`tP'
+                            mata: `tr`trVal'_tP`tP'' = ms_setdiff(uniqrows(`allTs'), uniqrows(`trVal_Ts'))
+                            mata: st_local("numGps", strofreal(rows(`tr`trVal'_tP`tP'')))
+                            
+                            // Start filling.  The key: do EVERYTHING you possibly
+                            // can to preserve precision for _t, which why the code's
+                            // so roundabout.
+                            tempvar tr`trVal'_tP`tP'Var
+                            getmata `tr`trVal'_tP`tP'Var' = `tr`trVal'_tP`tP'', double force
+                            
+                                * clone observations
+                                ** find an obsv corresp to this `tP' first
+                                tempvar newExpdFlag sumNewExpdFlag
+                                sum `sorter' if(`thePairings'==`tP')
+                                expand `=`numGps'+1' if(`sorter'==`r(min)'), gen(`newExpdFlag') // +1 for original obsv.
+                                
+                                ** flag all these as not being included in esamp
+                                replace `flag19' = 0 if(`newExpdFlag'==1)
+                                
+                                ** start filling t vals
+                                gen `sumNewExpdFlag' = sum(`newExpdFlag') if(`newExpdFlag'==1)
+                                tempname tGapVal
+                                forvalues nG = 1/`numGps'{
+                                    scalar `tGapVal' = `tr`trVal'_tP`tP'Var' in `nG'
+                                    replace _t = `tGapVal' if(`sumNewExpdFlag'==`nG')
+                                }
+                        }
+                    }
+                }
+            }
+        }
 		
         // Pull info on noadj, since no other way to recover
         tokenize "`e(cmdline)'", parse(",")
@@ -521,7 +627,7 @@ qui{
 			local frVal = 0	// nothing to add, if this isn't a frailty model
 			local reest_shtct = "matfrom(`skm_b') iter(0) norefine"
 		}
-				
+		
 		// Get list of TICs for demeaning (needed regardless of whether TVCs present)
 		if(`tvc'==.)	matrix coleq `skm_b' = "main"		// if there are no TVCs, main eq won't have a name.  Fix that.
 		tempname skm_tic
@@ -537,11 +643,11 @@ qui{
 		}
 			
 		// REESTMATE
-		if(`tvc'==.){
+        tempname origCox
+        _estimates hold `origCox', restore copy
+        
+		if(`tvc'==. & "`chk_tGaps'"==""){
 			** REESTIMATE WITH DEMEANED		- 20FEB19
-			_estimates hold origCox, restore copy
-				
-			* REESTM
 			stcox `ticDemean'  if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
 						offset(`reest_off') ///
@@ -553,51 +659,101 @@ qui{
                 
 			* BASELINE HAZARD 
 			qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
-			
-			// Restore orig estimates
-			_estimates unhold origCox
-			cap drop `flag19'
+
+                * Save (eventually, merge this on _t-TRANSITION)
+                preserve
+                    drop if `H0'==.
+                    tempvar flagFirst anyFail
+                    bysort `trans' _t: egen `anyFail' = max(_d)
+                    bysort `trans' _t (`sorter'): gen `flagFirst' = _n
+                    keep if _d==1 | (`anyFail'==0 & `flagFirst'==1)
+                    gduplicates drop _t `trans', force
+                    keep _t `trans' `H0' `anyFail'
+                    save `basechaz', replace
+                restore	
+                
+            * HAZARD RATIO
+            cap drop `xbTIV'
+            tempvar xbTIV
+                // Fill TICs w/mstcovar-set values
+                foreach x of local namesTIC{
+                    covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                }
+            matrix sco double `xbTIV' = `skm_b', eq("main") 
+
+            * combine w/frailty and/or offset (if present) into the HR.
+            gen double `hr' = exp(`xbTIV'+`frVal'+`offVal')
+            
+                * Save (eventually, merge this on _t-FROM-TO)
+                preserve
+                    tempvar flagFirst2 anyFail2 
+                    bysort `from' `to' _t: egen `anyFail2' = max(_d)    
+                    bysort `from' `to' _t (`sorter'): gen `flagFirst2' = _n
+                    keep if _d==1 | (`anyFail2'==0 & `flagFirst2'==1) `=cond("`chk_tGaps'"=="", "", "| `newExpdFlag'==1")'
+                    gduplicates drop _t `from' `to', force
+                    keep _t _d `trans' `from' `to' `hr' `thePairings' `sorter' `anyFail2'
+                    save `hazrat', replace
+                restore	
 		}
 		else{		// we do have TVCs, and need to quick respecify the model to estimate the baseline quants.
-			noi di _n as gr "TVCs detected. Adjusting calculations."
-			_estimates hold origCox, restore copy
-			 
+                    // (Will also now enter this segment if `chk_tGaps' isn't missing.  Have added stmts to
+                    // make `tvc'==. & "`chk_tGaps'"!="" behave like `tvc'==. & "`chk_tGaps'"=="")
+			if(`tvc'!=.) noi di _n as gr "TVCs detected. Adjusting calculations."
+
 			preserve 
 				** NOTICE: you haven't stsplit.  If there isn't an ID set, generate a fake one.
 				local stID_ch: char _dta[st_id]  
+                
+                tempvar timeTemp time0Temp
+                clonevar `timeTemp' = _t
+                clonevar `time0Temp' = _t0
+                
 				if("`stID_ch'"==""){
 					tempvar stID
 					gen `stID' = _n
 					
-					local st_d: char _dta[st_bd]
-					streset, id(`stID') failure(`st_d')
-				}
-				
-				stsplit, at(failures) strata(`trans')
-				 
-				// generate tempvars for all the TVC vars.
-				tempname skm_tvc
-				matrix `skm_tvc' = `skm_b'[1,"tvc:"]
-				local namesTVC: colnames `skm_tvc'
-				
-				local tvcStrDemean = ""
-				foreach v of local namesTVC{
-					** demean the TVCs (MAY21)
-					if(regexm("`namesTIC' ", "`v' ")==0){ // Ensure this TVC isn't in the TIC list (is already demeaned, if so).
-						tempvar `v'Dem
-						covarDemean mstcovarVals_means `v' ``v'Dem' `thePairings' "`namesB'" "dem"	
-					}
+					local st_d:     char _dta[st_bd]
+                        replace `st_d' = 1 `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")'
 
-					** generate the temp names for interacts using demeaned
-					tempvar `v'TVC
-					
-					gen double ``v'TVC' = ``v'Dem' * `e(texp)'
-					local tvcStrDemean = "`tvcStrDemean' ``v'TVC'"
+                    local st_dNums:	char _dta[st_ev]
+                        if("`st_dNums'"!="")	local st_dNums = "==`st_dNums'"
+
+					streset, id(`stID') failure(`st_d'`st_dNums')  
+                    
+                    // Re-fill with correct _t, _t0 values (if you have to add vars
+                    // because of gaps, there's a chance the streset won't produce
+                    // the correct vals)
+                    replace _t = `timeTemp'   if(`newExpdFlag'==1)
+                    replace _t0 = `time0Temp' if(`newExpdFlag'==1)
+                }
+
+				stsplit, at(failures) strata(`trans') // `thePairings' to deal with odd edge case.  Because trans is 'nested' in from-to pairs, may have extra rows in dataset, but won't affect estm.
+                
+                if(`tvc'!=.){
+                    // generate tempvars for all the TVC vars.
+                    tempname skm_tvc
+                    matrix `skm_tvc' = `skm_b'[1,"tvc:"]
+                    local namesTVC: colnames `skm_tvc'
+                    
+                    local tvcStrDemean = ""
+                    foreach v of local namesTVC{
+                        ** demean the TVCs (MAY21)
+                        if(regexm("`namesTIC' ", "`v' ")==0){ // Ensure this TVC isn't in the TIC list (is already demeaned, if so).
+                            tempvar `v'Dem
+                            covarDemean mstcovarVals_means `v' ``v'Dem' `thePairings' "`namesB'" "dem"	
+                        }
+
+                        ** generate the temp names for interacts using demeaned
+                        tempvar `v'TVC
+                        
+                        gen double ``v'TVC' = ``v'Dem' * `e(texp)'
+                        local tvcStrDemean = "`tvcStrDemean' ``v'TVC'"
+                    }
+                    
+                    // Reestimate  
+                    local texp = "`e(texp)'"  // needed for next segment's xb calcs
 				}
-				
-				// Reestimate  
-				local texp = "`e(texp)'"  // needed for next segment's xb calcs
-				
+
 				stcox `ticDemean' `tvcStrDemean' if(`flag19'==1), ///
 						`tieType' `reest_tr' `reest_fr' ///
 						offset(`reest_off') ///
@@ -607,67 +763,125 @@ qui{
                 * (save to Stata memory, if running unit tests)
                 if("`dem_debug'"!="")   est store mst_demCox
                 
-				// Tidy
-				matrix drop `skm_tvc' 
-				drop `flag19'
-			
-				* BASELINE CHAZ, via hazard components	
-				tempvar basehc
-				predict double `basehc', basehc
+                // You're here b/c of the odd edge case -> calc's straightforward 
+                if(`tvc'==.){
+                    * BASELINE HAZARD 
+                    qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
+                    
+                    // Override _t for the eventual remerge
+                    replace _t = `timeTemp'  if(`newExpdFlag'==1)
+                    
+                    // Also need to do the HR here, for the same reason as the
+                    // pure TVC case.
+                    foreach x of local namesTIC{
+                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                    }
+                    
+                    // Gen linear combo
+                    * TIC 
+                    cap drop `xbTIV'
+                    tempvar xbTIV
+                    matrix sco double `xbTIV' = `skm_b', eq("main") 
+                    
+                    * combine w/frailty and/or offset (if present) into the HR.
+                    gen double `hr' = exp(`xbTIV'+`frVal'+`offVal')
+                    
+                }
+                // You're here b/c of TVCs.
+                else{
+                    // Tidy
+                    matrix drop `skm_tvc' 
+                
+                    * BASELINE CHAZ, via hazard components	
+                    tempvar basehc
+                    predict double `basehc', basehc
 
-		*********************************************************************************************************************
-			  // Need to do linear combo for mstcovar values  
-              // (and doing it here to make life easier, in the longer run.)
-				
-				// Fill TIC first (and since demeaned model is in memory, means 
-                // you have to fill in the demeaned vars for the prediction.)
-				foreach x of local namesTIC{
-					covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
-				}
-				
-				// Fill any TVCs not in TIC list next  
-				foreach v of local namesTVC{
-					// Ensure this TVC isn't in the TIC list.
-					if(regexm("`namesTIC' ", "`v' ")==0){
-						covarFill `xvals' mstcovarVals_means `v' `thePairings' "`namesB'" 
-					}
-				}
-				
-				// Gen linear combo
-				* TIC 
-				cap drop `xbTIV'
-				tempvar xbTIV
-				matrix sco double `xbTIV' = `skm_b', eq("main") 
+            *********************************************************************************************************************
+                  // Need to do linear combo for mstcovar values  
+                  // (and doing it here to make life easier, in the longer run.)
+                    
+                    // Override _t for the eventual remerge
+                    replace _t = `timeTemp' if(`newExpdFlag'==1)
+                    
+                    // Fill TIC first (and since demeaned model is in memory, means 
+                    // you have to fill in the demeaned vars for the prediction.)
+                    foreach x of local namesTIC{
+                        covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
+                    }
+                    
+                    // Fill any TVCs not in TIC list next  
+                    foreach v of local namesTVC{
+                        // Ensure this TVC isn't in the TIC list.
+                        if(regexm("`namesTIC' ", "`v' ")==0){
+                            covarFill `xvals' mstcovarVals_means `v' `thePairings' "`namesB'" 
+                        }
+                    }
+                        
+                    // Gen linear combo
+                    * TIC 
+                    cap drop `xbTIV'
+                    tempvar xbTIV
+                    matrix sco double `xbTIV' = `skm_b', eq("main") 
 
-				* TVC gen here.
-				cap drop `xbTVC'
-				tempvar xbTVC
-				matrix sco double `xbTVC' = `skm_b', eq("tvc") 
-					// then, add in the t bit, which is equiv to multiplying the 
-                    // TVC's pseudo-linear combo times time's functional form
-					replace `xbTVC' = `xbTVC' * `texp'
-				
-				tempfile stuff
-				gcollapse (mean) `basehc' `xbTIV' `xbTVC', by(_t `from' `to')
-				
-				// Get the final prediction for H0.
-				tempvar pieces H
-				gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal'+`offVal') 
-				bysort `from' `to' (_t): gen `H' = sum(`pieces')
-				gduplicates drop _t `from' `to', force
-				keep _t `from' `to' `H'
-				save `stuff', replace	
-				local mrgSize = `c(N)'			
+                    * TVC gen here.
+                    cap drop `xbTVC'
+                    tempvar xbTVC
+                    matrix sco double `xbTVC' = `skm_b', eq("tvc") 
+                        // then, add in the t bit, which is equiv to multiplying the 
+                        // TVC's pseudo-linear combo times time's functional form
+                        replace `xbTVC' = `xbTVC' * `texp'
+                    
+                    gcollapse (mean) `basehc' `xbTIV' `xbTVC' `trans' `thePairings' (max) _d, by(_t `from' `to')
+                    
+                    // Get the final prediction for H0.
+                    tempvar pieces H
+                    gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal'+`offVal') 
+                    bysort `from' `to' (_t): gen double `H' = sum(`pieces')                               
+                }
+                // tempfile stuff
+                if("`chk_tGaps'"==""){                   
+                    keep _t `from' `to' `trans' `H' `thePairings' _d
+                    drop if `H'==.
+                    tempvar flagFirst anyFail 
+                    gen `sorter' = _n
+                    bysort `from' `to' _t: egen `anyFail' = max(_d)
+                    bysort `from' `to' _t (`sorter'): gen `flagFirst' = _n
+                    keep if _d==1 | (`anyFail'==0 & `flagFirst'==1)
+                    gduplicates drop _t `from' `to', force       
+                    save `hazrat', replace	
+                }
+                else{
+                    keep _t _d `from' `to' `trans' `H0' `hr' `thePairings' `sorter'
+                    // Will need to do a few extra steps, so save a temp file
+                    tempfile stuff
+                    save `stuff'
+                }
+
 			restore		
 
-			// Merge cHaz back in
-			tempvar merge
-			if(`mrgSize' < 100000)	merge _t `from' `to' using `stuff', sort uniqusing nokeep _merge(`merge')
-			else					join * , from(`stuff') by(_t `from' `to') keep(1 3) generate(`merge')			// on the off chance this helps save time
-			drop `merge'
-			
-			
-			// No longer needed, because preserve will restore things
+            // If it's the odd edge case, need to take extra step to get H0 in 
+            // expected shape
+            if("`chk_tGaps'"!=""){
+                preserve
+                    // H0
+                    use `stuff', clear
+                    drop if `H0'==.
+                    tempvar flagFirst anyFail
+                    bysort `trans' _t: egen `anyFail' = max(_d)
+                    bysort `trans' _t (`sorter'): gen `flagFirst' = _n
+                    keep if _d==1 | (`anyFail'==0 & `flagFirst'==1)
+                    gduplicates drop _t `trans', force
+                    drop `hr' `from' `to'
+                    save `basechaz', replace
+                    
+                    // HR
+                    use `stuff', clear
+                    gduplicates drop _t `from' `to', force
+                    drop `H0'
+                    save `hazrat', replace
+                restore
+            }
+
 			// Reset the stset to the original thing (i.e., without the id() from 
             // stsplit, if there was no ID to start with)
 
@@ -704,131 +918,89 @@ qui{
 						ever(`st_ever')		never(`st_never') 	///
 						after(`st_after')	before(`st_before') ///
 						time0(`st_bt0') 	if(`st_ifopt') 		///
-						`st_show' 
-			
-			_estimates unhold origCox
+						`st_show' 	
 		}
+        _estimates unhold `origCox'
+        cap drop `flag19'
 	}
 	
 	noi di _n as gr "Please wait.  Computing hazards" _c		// display message
 	
+    // Bring back in the merged datasets to get our unique list
+    preserve
+        // HAZARD RATIO (UoA: _t-from-to)
+        * SEMI-PARAMETRIC
+        if(colsof(`skm_b')!=0)  use `hazrat', clear
+        * NON-PARAMETRIC
+        else{
+            gduplicates drop _t `from' `to', force
+            gen double `hr' = exp(`frVal' + `offVal') // if you ever allow different offset values for different transitions, will need to revisit this decision (here and elsewhere)
+        }
+        
+        // BASELINE HAZARD
+        if(`tvc'==. | colsof(`skm_b')==0){  // (tvc==. for SP w/o TVCs AND for NP; leaving the redundant conditional to make clear for future self)
+            * (Nothing to merge for TVC case b/c already generated H earlier.)
+            describe * using `basechaz'
+            local mrgSize = `r(N)'
 
-	tempname hrMat
-	matrix `hrMat' = 1
-	
-	* HR (if semi-par)
-	if(colsof(`skm_b')!=0 & `tvc'==.){        // as of 21APR19, will only be TICs now.
-		// 02DEC16: covariate value fix
-		local names: colnames `xvals'	// pull the column name for xvals
-		local string = ""
-		
-		// jic
-		preserve	// !! for the xb gen
-		
-			// you do still need this.  It's filling in the variable's value to the dataset for pred.
-			foreach x of local names{
-				covarFill `xvals' mstcovarVals_means `x' `thePairings' "`namesB'"
-			}
-				
-			// Generate linear combo
-			* TIC 
-			cap drop `xbTIV'
-			tempvar xbTIV
-			matrix sco double `xbTIV' = `skm_b', eq("main") 
+            tempvar merge
+            if(`mrgSize' < 100000)	merge _t `trans' using `basechaz', sort uniqusing nokeep _merge(`merge') keep(`H0' `anyFail')
+			else					join * , from(`basechaz') by(_t `trans') keep(1 3) generate(`merge') keep(`H0' `anyFail')		// on the off chance this helps save time       
 
-			* combine w/frailty and/or offset (if present) into the HR.
-			cap drop `hr'
-			tempvar hr
-			gen double `hr' = exp(`xbTIV'+`frVal'+`offVal')
+            // Fill
+            fillForward, t(_t) f(`anyFail') qoi(`H0') tr(`trans') id(`sorter')
+            
+            drop `anyFail'
 
-			* insert the prediction-to-matrix conversion here before the restore
-			cap drop `hrMat'
-			tempname hrMat
-			
-			// If possible, just throw the variable into matrix memory and restore.
-				local mrg = 0
-				// set matsize if needed
-				if(`c(N)'>`c(matsize)' & `c(N)'< `c(max_matsize)'){
-					set matsize `c(N)'
-				
-					// quick sorting to make sure observations are in same order  
-                    // (nothing in the preserve block changes sort order, so this 
-                    // should match perfectly.)
-					mkmat `hr', mat(`hrMat')
-				}	
-			// Otherwise, do a tempfile for merging.  Which is suboptimal.  
-			* (Could eventually redo with Mata, if desired: sort on _t and trans 
-            * pass everything into Mata memory, restore, sort on _t and trans, 
-            * then load in the dataset.)
-				else{
-					local mrg = 1
-					
-					tempfile stuff
-					gduplicates drop _t `from' `to', force
-					keep _t `from' `to' `hr' `s0'
-					save `stuff', replace
-					
-					local mrgSize = `c(N)'
-				}
-			
-		restore
+        }
+        
+        // FINAL H
+        tempvar Haz
+        if(`tvc'==. | colsof(`skm_b')==0){
+            gen double `Haz' = `H0' * `hr'
+        }
+        else{		
+            gen double `Haz' = `H'		
+            drop `H'		
+        }
+
+        // Toss anything with a larger failure time than tmax (to help with memory)
+		drop if(_t>`tmax')
+
+		// OK, at this point: rename and you're done.
+        tempvar refT refTrans refFrom refTo refFrTo refHaz
+		rename _t 				`refT'
+		rename `trans' 			`refTrans'
+		rename `from'			`refFrom'
+		rename `to'				`refTo'
+		rename `thePairings'	`refFrTo'
+		rename `Haz'			`refHaz'
 		
-		if(`mrg'==0){		// everything fits
-			cap drop `hr'
-			tempvar hr
-			svmat double `hrMat', name(`hr')
-			cap rename `hr'1 `hr'	// if needed, do it.
-		}
-		else{				// everything did not fit; merge.
-			tempvar merge
-			if(`mrgSize' < 100000)	merge _t `from' `to' using `stuff', sort uniqusing nokeep _merge(`merge')   // has to be by from-to pairings, b/c trSp covars (but collapsed strata) might merge incorrectly
-			else					join * , from(`stuff') by(_t `from' `to') keep(1 3) generate(`merge')		// on the off chance this helps save time
-					
-			drop `merge'
-		}
-	}
-	else if(colsof(`skm_b')==0){		// otherwise, it's non-parametric.
-		// Just overwrite everything in s0 after doing (# fails/#at risk) for each tr.
-		cap drop `hr'
-		tempvar hr
-		gen `hr' = 1
+		keep `refT' `refTrans' `refFrom' `refTo' `refFrTo' `refHaz'
+
+		drop if `refT'==.
+        
+		// For every unique from-to pairing in the dataset, make sure there's a 
+        // stime observation where surv = 1
+		tempvar flagT34 firstInP
+		bysort `refFrom' `refTo' (`refT'): gen `firstInP' = _n==1	// notice: is giving you a t=0 observation for all transitions. (Important for differencing purposes.)
+		expand 2 if(`firstInP'==1), gen(`flagT34')
+		replace `refHaz' = 0 if(`flagT34'==1)
+		replace `refT' = 0 if(`flagT34'==1)	// this needs to be zero, because it's still calculating the full msfit matrix for **all** unique failures, not just the range we've inputted.
+
+		drop `firstInP'
+		drop `flagT34'
 		
-		tempvar stshaz 
+		sort `refTrans' `refFrom' `refTo' `refT'
 		
-		// get basic haz, defined as # fails/# at risk
-		sts gen `stshaz' = h, by(`trans')	// needs to stay trans--represents the strata of interest
-		recode `stshaz' (.=0)
-		
-		// get Nelson-Aalen
-		tempvar intermed naH
-		bysort `trans' _t  : gen double `intermed' = `stshaz' if(_n==1)
-		bysort `trans' (_t): gen double `naH' = sum(`intermed')
-		
-		// 21FEB19 mod - keep in H0 form
-		replace `H0' = `naH'*exp(`frVal')*exp(`offVal')
-		
-		cap drop `stshaz'
-		cap drop `intermed'
-		cap drop `naH'
-	}
-	else{	// only other possiblity is semi-par w/TVCs
-		// We already calculated the HR for this when reestimated the demeaned 
-		// model.  The temporary interaction terms were already in the dataset 
-		// (and we'd have to regenerate those, if we did the calcs here).
-		//
-		// Ergo, there's nothing we need to do here for a model w/TVCs.  Inserting
-		// this code block here explicitly to prevent future freakouts.
-	}
-		
-	// generate cumulative hazard
-	tempvar Haz
-	if(`tvc'==.)    gen double `Haz' = `H0' * `hr'
-	else{		
-		gen double `Haz' = `H'		
-		drop `H'		
-	}
+        tempfile msfit
+		save `msfit', replace
+		local mrgSize = `c(N)'
+
+    restore
+ 
+ 
 	noi di as gr "." _c			// display message
-	
 
 	// Second, generate the holder variables.  **NOTE: if gen's on at the end, keep them.
 	* These will have one row for every simulation-time pairing.
@@ -896,7 +1068,7 @@ qui{
 	
 	// If path specified, check those names, too
 	if("`path'"!=""){			
-		foreach stub in _id _t _simNm _stage	{
+		foreach stub in _id _t _simNm _stage{
 			local errMsg = "`path'`stub'"
 			cap confirm v `path'`stub' 
 			if(_rc==0)	continue, break
@@ -912,78 +1084,10 @@ qui{
 	
 	
 	// Last preparation step.  Need h(t) and H(t) for every t, regardless of obsv. fail time.
-	* So, generate one more set of variables containing from, to, haz, and Haz
-	tempvar refT refTrans refFrom refTo refFrTo refhaz refSurv refHaz
+	* So, generate one more set of variables containing haz and Surv
+	tempvar refhaz refSurv
 
-	
-	// getting some basics to expand dataset's observations, jic (though this seems dangerous)		** 	CONSIDER CHANGING
-	//																									Maybe do it based on number of unique failure times?		
-	* can't use ``gen'_Rslt_t', because need one block for every from-to pairing
-	local refObs = `fromToPairs' * (`tPoints')												// !! 30JAN17. I think this is the big adjustment you're going to need to make, to get the right number of obsvs.  The correct pairing should be (number of from-to pairs) * t
-		local higher = `stime' + 1
-	if(`refObs'>`c(N)'){
-		set obs `refObs'
-	}
-	
-	preserve
-		tempfile msfit
-		
-		// keep any of the unique failure times
-		tempvar failTPt trFailTime HazMax
-		bysort _t (`thePairings'): gegen `failTPt' = max(_d)
-		bysort `thePairings' _t: gegen byte `trFailTime' = max(_d)			// to be aware of whether the pairing actually has failure at that time
-		bysort `thePairings' _t: gegen double `HazMax' = max(`Haz')         // needs to be thePairings b/c of poss trSp covar effects
-			replace `Haz' = `HazMax' if(`Haz'==. & `HazMax'!=.)
-            drop `HazMax'		
-
-		// Toss as needed to get unique list
-		keep if(`failTPt'==1 | _t==`tMax_inputted')		// keep t's where failures occur OR tmax (27FEB19)
-		drop if(`trFailTime'==1 & _d==0)		        // toss observations where this transition has a failure time at this t, but this particular observation isn't the failure one
-		gduplicates drop _t `thePairings', force		// toss all the other duplicates, now that we've whittled
-		
-		// If the time point isn't a failure time for *this* transition, wipe the surv and refill.  (Because the surv shouldn't vary in between.)
-        tempvar runCntT runCnt HazMax2 
-        bysort `trans' (_t): gen `runCntT' = sum(_d)                            // needs to be trans, not thePairings, or else collapsed trs won't calc properly
-        bysort `trans' _t: gegen `runCnt' = max(`runCntT')                      // need this b/c if there are multiple obsvs for a _t (e.g., collapsed trs), there's a chance `runCntT' won't reflect the quantity you intend
-        bysort `thePairings' `runCnt' (_t): gegen double `HazMax2' = max(`Haz') // needs to be thePairings b/c of poss trSp covar effects
-            replace `Haz' = `HazMax2' if(`Haz'==. & `HazMax2'!=.) 
-            replace `Haz' = 0 if(`runCnt'==0)           // JIC
-            drop `HazMax2'
-			
-		// Toss anything with a larger failure time than tmax (to help with memory)
-		drop if(_t>`tmax')
-		
-		// OK, at this point: rename and you're done.
-		rename _t 				`refT'
-		rename `trans' 			`refTrans'
-		rename `from'			`refFrom'
-		rename `to'				`refTo'
-		rename `thePairings'	`refFrTo'
-		rename `Haz'			`refHaz'
-		
-		keep `refT' `refTrans' `refFrom' `refTo' `refFrTo' `refHaz'
-
-		drop if `refT'==.
-        
-		// For every unique from-to pairing in the dataset, make sure there's a 
-        // stime observation where surv = 1
-		tempvar flagT34 firstInP
-		bysort `refFrom' `refTo' (`refT'): gen `firstInP' = _n==1	// notice: is giving you a t=0 observation for all transitions. (Important for differencing purposes.)
-		expand 2 if(`firstInP'==1), gen(`flagT34')
-		replace `refHaz' = 0 if(`flagT34'==1)
-		replace `refT' = 0 if(`flagT34'==1)	// this needs to be zero, because it's still calculating the full msfit matrix for **all** unique failures, not just the range we've inputted.
-
-		drop `firstInP'
-		drop `flagT34'
-		
-		sort `refTrans' `refFrom' `refTo' `refT'
-		
-		save `msfit', replace
-		local mrgSize = `c(N)'
-	restore
-	
-	
-	// Bring everything back in.
+	// Bring the msfit vars back in.
 	if(`mrgSize' < 100000)	merge 1:1 _n using `msfit', nogen
 	else					fmerge 1:1 _n using `msfit', nogen
 	
@@ -1005,13 +1109,14 @@ qui{
 		gen `mergeID' = _n
 		
 		foreach tr of local fromToPairsList{	// Switched to unique from-to pairs, just to eliminate any possible complication.
-			putmata `mergeID' Haz=`refHaz' if(`refFrTo'==`tr'), replace
-			
-			mata: w = diff(1 :- Haz) 			// took out colsum for this one.  will need in stgSample and hazSamp, clearly. 
+			tempname Haz_mta w
+            putmata `mergeID' `Haz_mta'=`refHaz' if(`refFrTo'==`tr'), replace   // is sorted correctly earlier - Ctrl+F for "sort `refTrans'"
+            
+			mata: `w' = diff(1 :- `Haz_mta') 		// took out colsum for this one.  will need in stgSample and hazSamp, clearly. 
 					
-			getmata `refhaz' = w, update id(`mergeID') double
+			getmata `refhaz' = `w', update id(`mergeID') double
 			
-			mata: mata drop Haz `mergeID' 		// cleanup
+			mata: mata drop `Haz_mta' `mergeID' `w'	// cleanup
 		}
 		
 		replace `refhaz' = `refhaz' * -1	    // because the diff function is coded for Surv, originally, so it assumes decreasing values as t increases.
@@ -2325,6 +2430,39 @@ mata:
 	}
 end
 ********************************************************************************************************************************	
+// ms_setdiff: The difference-in-sets function (similar to setdiff in R)
+//   There's almost certainly a better way to implement this, speed-wise.  Given 
+//   the situations where it'll be invoked, though, (shrug).
+//
+// NOTE: this coding is specialized to the situation.  Specifically, it exploits
+//       the fact that var2 is always going to be a subset of var1 when it's called
+//       from within the main program.
+
+cap mata mata drop ms_setdiff()
+mata:
+	transmorphic colvector ms_setdiff(transmorphic colvector var1, ///
+                                      transmorphic colvector var2)
+    // var1: variable containing values (either numeric or string)
+    // var2: variable containing values (either numeric or string)
+{    
+    // Initialize holders
+    transmorphic colvector stack, uniqs
+    real colvector frqs 
+    
+    // Stack the two 
+    stack = uniqrows(var1) \ uniqrows(var2)
+
+    // Get freq table
+    frqs = mm_freq(stack)
+
+    // Get uniq list for later
+    uniqs = uniqrows(stack)
+    
+    // Vals appearing only once are those missing from var2, given the applic here.
+    return(uniqs[selectindex(frqs:!=2)])
+}
+end
+********************************************************************************************************************************	
 // The column independent sort function
 // Given a multicolumn matrix, sorts each of matrix's columns individually from 
 // low to high, as if they were mere colvectors
@@ -2626,4 +2764,32 @@ prog define jicFileNm, rclass
     return local date "`date'"
     
 } // for bracket collapse in editor
+end
+********************************************************************************************************************************
+// For H0 or S0, fill the value forward for trans-_t pairings where no fail occurs
+cap program drop fillForward
+program define fillForward
+qui{
+    syntax [, Timevar(varname) Failvar(varname) QOI(varname) TRansvar(varname) SURV ID(varname)]
+    
+    // Fill zeros first
+    tempvar runCntT runCnt HazMax2 
+    bysort `transvar' (`timevar' `id'): gen `runCntT' = sum(`failvar')     // needs to be trans, not thePairings, or else collapsed trs won't calc properly
+    bysort `transvar' `timevar' (`id'): gegen `runCnt' = max(`runCntT')    // need this b/c if there are multiple obsvs for a _t (e.g., collapsed trs), there's a chance `runCntT' won't reflect the quantity you intend
+    
+    replace `qoi' = cond("`surv'"=="", 0, 1) if(`runCnt'==0)        // if surv option specified, is s0.  Otherwise, is H0. 
+    
+    // See how many missings we have
+    count if `qoi'==.
+    local nMiss = `r(N)'
+
+    while(`nMiss'>0){
+        // Fill
+        bysort `transvar' (`timevar' `id'): replace `qoi' = `qoi'[_n-1] if(`qoi'[_n-1]!=. & `qoi'==.)
+    
+        // Recount
+        count if `qoi'==.
+        local nMiss = `r(N)'
+    }
+}
 end
