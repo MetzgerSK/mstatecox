@@ -525,6 +525,10 @@ qui{
             if(`temp_noCollTrs'!=1){
                 mata: st_local("chk_collTrs", invtokens(strofreal(uniqrows(`stacked')[selectindex(`freqs':!=1)])))
                 
+                // Keep running list of troublesome Ts for later fixing
+                tempname troubleTs
+                local firstTimeThrough=1
+                
                 // For the collapsed trs
                 foreach trVal of local chk_collTrs{
                     tempname allTs allTs_uniq trVal_Ts trVal_Ts_uniq
@@ -552,9 +556,18 @@ qui{
                             mata: `tr`trVal'_tP`tP'' = ms_setdiff(uniqrows(`allTs'), uniqrows(`trVal_Ts'))
                             mata: st_local("numGps", strofreal(rows(`tr`trVal'_tP`tP'')))
                             
+                            if(`firstTimeThrough'==1){
+                               mata: `troubleTs' =  `tr`trVal'_tP`tP''
+                               local firstTimeThrough = 0
+                            }
+                            else{
+                                mata: `troubleTs' =  `troubleTs' \ `tr`trVal'_tP`tP''
+                            }
+                            
                             // Start filling.  The key: do EVERYTHING you possibly
                             // can to preserve precision for _t, which why the code's
-                            // so roundabout.
+                            // so roundabout.  (This still needs to be here, even
+                            // with the less kludge-y msfit tweak.)
                             tempvar tr`trVal'_tP`tP'Var
                             getmata `tr`trVal'_tP`tP'Var' = `tr`trVal'_tP`tP'', double force
                             
@@ -711,24 +724,34 @@ qui{
 				if("`stID_ch'"==""){
 					tempvar stID
 					gen `stID' = _n
-					
+
 					local st_d:     char _dta[st_bd]
-                        replace `st_d' = 1 `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")'
 
                     local st_dNums:	char _dta[st_ev]
-                        if("`st_dNums'"!="")	local st_dNums = "==`st_dNums'"
+                    if("`st_dNums'"!="")	local st_dNums = "==`st_dNums'"
 
 					streset, id(`stID') failure(`st_d'`st_dNums')  
                     
                     // Re-fill with correct _t, _t0 values (if you have to add vars
                     // because of gaps, there's a chance the streset won't produce
                     // the correct vals)
-                    replace _t = `timeTemp'   if(`newExpdFlag'==1)
-                    replace _t0 = `time0Temp' if(`newExpdFlag'==1)
+                    replace _t = `timeTemp'   `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")' 
+                    replace _t0 = `time0Temp' `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")' 
                 }
 
-				stsplit, at(failures) strata(`trans') // `thePairings' to deal with odd edge case.  Because trans is 'nested' in from-to pairs, may have extra rows in dataset, but won't affect estm.
-                
+				stsplit, at(failures) strata(`trans')  // `thePairings' won't work the way you intend, so has to be `trans'
+               
+                // If this is a chk_tGaps situation, split again on the affected
+                // failure times.
+                if("`chk_tGaps'"!=""){    
+                    mata: st_local("allTs_ov_uniq", ///
+                                   invtokens(strofreal(mm_unique(`troubleTs')'))) 
+
+                    tempvar splitTemp
+                    stsplit `splitTemp', at(`allTs_ov_uniq')
+                    drop `splitTemp'
+                }
+  
                 if(`tvc'!=.){
                     // generate tempvars for all the TVC vars.
                     tempname skm_tvc
@@ -767,9 +790,9 @@ qui{
                 if(`tvc'==.){
                     * BASELINE HAZARD 
                     qui predict double `H0', basechaz		// !! - 20FEB19 modification.  Computing via the cumulative hazard now.
-                    
+
                     // Override _t for the eventual remerge
-                    replace _t = `timeTemp'  if(`newExpdFlag'==1)
+                    replace _t = `timeTemp'  `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")' 
                     
                     // Also need to do the HR here, for the same reason as the
                     // pure TVC case.
@@ -801,7 +824,7 @@ qui{
                   // (and doing it here to make life easier, in the longer run.)
                     
                     // Override _t for the eventual remerge
-                    replace _t = `timeTemp' if(`newExpdFlag'==1)
+                    replace _t = `timeTemp' `=cond("`chk_tGaps'"=="", "", "if(`newExpdFlag'==1)")' 
                     
                     // Fill TIC first (and since demeaned model is in memory, means 
                     // you have to fill in the demeaned vars for the prediction.)
@@ -835,6 +858,7 @@ qui{
                     
                     // Get the final prediction for H0.
                     tempvar pieces H
+
                     gen double `pieces' = 1-(1-`basehc')^exp(`xbTIV'+`xbTVC'+`frVal'+`offVal') 
                     bysort `from' `to' (_t): gen double `H' = sum(`pieces')                               
                 }
