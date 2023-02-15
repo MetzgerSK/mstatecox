@@ -3,8 +3,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for details
 
-*! Last edited: 23JUN22
-*! Last change: inserted version stmt, r-class mem preserve
+*! Last edited: 18AUG22
+*! Last change: added sequential stg # check
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 	
 cap program drop mstutil
@@ -139,7 +139,7 @@ qui{
 		else{
 			noi di as gr _c "You specified {bf:sdur} for a single transition, but you "
             if("`e(strata)'"!=""){
-                noi di as gr "estimated stcox with a strata variable.  You must specify variables containing both the from and to stages."
+                noi di as gr "estimated stcox with a strata variable.  You must specify {cmd:mstutil}'s {bf:from()} and {bf:to()} options."
                 cleanVars
                 _return restore `retPres'
                 exit 198
@@ -167,20 +167,23 @@ qui{
         if("`internal'"=="")    local internal `e(strata)'
 	}
     
+    // The standard seq intg msg
+    local msg_seqInts = "Please give your \`noun' integer values starting at 1."
 	// also see if stage 0 is a thing (or stage 2 being smallest, or...).  If so, Stata will get angry.  Make the user fix it.
 	qui sum `from'
         local min = r(min)
     qui sum `to'
         local min = min(`min',r(min))
 	if(`min'!=1){
-		noi di as err "Your smallest stage is `min'.  Please give your stages sequential integer values starting at 1."
+        local noun = "stages sequential"
+		noi di as err "Your smallest stage is `min'.  `msg_seqInts'"
 		cleanVars
         _return restore `retPres'
         exit 125
 	}
-
+    
 	// make sure from and to (AND trans) are all integers
-	local noun = "stages"
+	local noun = "stages sequential"
 	foreach v of varlist `from' `to' `internal'{
         if("`ferest()'"=="")	local noun = "transitions"
 		tempvar temp
@@ -188,12 +191,28 @@ qui{
         
 		qui sum `temp'
 		if(`r(sum)'!=0){
-			noi di as err "`v' contains non-integer elements.  Please give your `noun' sequential integer values starting at 1."
+			noi di as err "`v' contains non-integer elements.  `msg_seqInts'"
 			cleanVars
             _return restore `retPres'
             exit 125
 		}
 	}
+    
+    // make sure stages are sequential integers
+    tempname stgLst incrm
+    qui glevelsof `from' `to', mata(`stgLst') 
+    mata: `stgLst' = uniqrows(vec(`stgLst'.numx))
+    mata: `incrm' = `stgLst'[2..rows(`stgLst')] :- `stgLst'[1..(rows(`stgLst')-1)]   // though diff() from the mstsamp file would also do the job
+    * throw back error to Stata
+    mata: st_local("seqStgs", strofreal(all(`incrm':==1)))
+        mata mata drop `stgLst' `incrm'
+    if(`seqStgs'==0){
+        local noun = "stages"
+        noi di as err "Non-sequential integer values detected for stages.  `msg_seqInts'"
+        cleanVars
+        _return restore `retPres'
+        exit 125
+    }
     
   // ereturn all relv info -----------------------------------------------------	
 	// return highest stage number
