@@ -100,9 +100,10 @@ qui{
 		else	local xtra = "_n" 			// add extra hard return before first transition header
 					
 		noi di `xtra' as gr "> Transition " as ye `tr'
-		qui _rmcoll(`namesB') if(`transVar'==`tr' & `flag19'==1), forcedrop
+		cap qui _rmcoll(`namesB') if(`transVar'==`tr' & `flag19'==1), forcedrop
 			local eqCovars `r(varlist)'
-		
+            local rc_rmcoll = _rc
+            
 		if("`eqCovars'"!=""){	
 			tempname skm_bSubset
 			cap mat drop `skm_bSubset'
@@ -152,7 +153,12 @@ qui{
 			matrix rownames `global`trL'' = e(strata)==`tr'
 		}
 		else{
-			noi di _n _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
+			if(`rc_rmcoll'==0) noi di _n _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
+            else{
+                count if(`transVar'==`tr' & `flag19'==1)
+                noi di as err "Insufficient observations to compute PH test: N = `r(N)'.  Moving to next stratum..."
+            }
+            noi di ""
 		}
 		// if not the last transition, insert blank line between this tr's output and horz line for next
 		if("`ferest()'"!="")	noi di ""
