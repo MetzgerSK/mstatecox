@@ -41,13 +41,16 @@ qui{
 		exit 198
 	}
     
+    ** build local w/all the non-plot opts in it
+    local nonPlotOpts detail `log' `km' `time' `rank' //  <- only poss non-plot opts.
+    
     ** If there's a frailty variable, that means there can't currently be a strata
     ** variable.  Flag that for the user (and our future selves), kick everything
     ** to the regular estat phtest routine.
     if("`e(shared)'"!=""){
     	noi di as gr "No {bf:strata()} variable present due to presence of {bf:shared()}.  Stata does not currently permit both in the same model."
         noi di as gr _n "Shifting to regular {bf:estat phtest} routine: "
-        cap noi estat phtest, detail `log' `km' `time' `rank' //  <- only poss non-plot opts.
+        cap noi estat phtest, `nonPlotOpts'
             // push through estat phtest's regular r-class returns
             if(_rc==0)  return add
         exit
@@ -56,7 +59,7 @@ qui{
 	// Housekeep - get sample flag, covariate list, store trans name
 	tempvar flag19
 	gen `flag19' = e(sample)
-	
+    
 	tempname skm_b skm_V
 	matrix `skm_b' = e(b)
 	matrix `skm_V' = e(V)
@@ -132,10 +135,10 @@ qui{
                 // now a message that gets printed to the user about this in the 
                 // housekeeping section.
                 
-			cap qui estat phtest, detail `log' `km' `time' `rank' //  <- only poss non-plot opts.
+			cap qui estat phtest, `nonPlotOpts'
 			
 			// If no error, say loudly
-			if(_rc==0)				noi estat phtest, detail `log' `km' `time' `rank'
+			if(_rc==0)				noi estat phtest, `nonPlotOpts'
 			// If error, say insuff obsvs.
 			if(_rc==2001)			noi di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
 			// If any other error, just be generic.
