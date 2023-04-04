@@ -81,6 +81,9 @@ qui{
         noi di as gr "Ignoring {bf:plot()} options (not currently permitted for {bf:mstphtest}).  Will need to generate manually with {cmd:estat phtest} by looping over strata."
     }
 
+    // Get qui/noi prefs for non-error messages that are printed in the error color
+    local noiQui = cond(`c(noisily)'==1, "", "cap") // can't qui an error msg, but can cap it
+    
 	// Get the varlist for each strata
 	qui levelsof `transVar', local(transIDs)
 	
@@ -140,9 +143,9 @@ qui{
 			// If no error, say loudly
 			if(_rc==0)				noi estat phtest, `nonPlotOpts'
 			// If error, say insuff obsvs.
-			if(_rc==2001)			noi di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
+			if(_rc==2001)           `noiQui' di as err "Insufficient observations to compute PH test: N = `e(N)'.  Moving to next stratum..."
 			// If any other error, just be generic.
-			if(_rc!=0 & _rc!=2001)	noi di as err "Error in computing PH test (error code " _rc ").  Compute manually to see the specific message."
+			if(_rc!=0 & _rc!=2001)	noi di as err "Error in computing PH test (error code " _rc ").  Compute test manually to see the specific message."
 		
 			// Store table for r()
 			local trL = strtoname("`tr'")	 // legal version of tr
@@ -159,7 +162,7 @@ qui{
 			if(`rc_rmcoll'==0) noi di _n _col(7) as gr "No covariates detected for transition " as ye `tr' as gr "."
             else{
                 count if(`transVar'==`tr' & `flag19'==1)
-                noi di as err "Insufficient observations to compute PH test: N = `r(N)'.  Moving to next stratum..."
+                `noiQui' di as err "Insufficient observations to compute PH test: N = `r(N)'.  Moving to next stratum..."
             }
             noi di ""
 		}
