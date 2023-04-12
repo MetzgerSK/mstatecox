@@ -909,7 +909,7 @@ qui{
                     * c(processors_lic), if user's done a set processor stmt)
                     local collCmd = cond(`c(stata_version)'>=17 & `c(processors)'>=6, ///       // 6 or more's guestimated 
                                         "collapse", "gcollapse")
-                    
+
                     `collCmd' (mean) `basehc' `xbTIV' `xbTVC' `trans' `thePairings' (max) _d, by(_t `from' `to')
                     
                     // Get the final prediction for H0.
@@ -1169,7 +1169,7 @@ qui{
 		gen `mergeID' = _n
 		
 		foreach tr of local fromToPairsList{	// Switched to unique from-to pairs, just to eliminate any possible complication.
-			tempname Haz_mta w
+            tempname Haz_mta w
             putmata `mergeID' `Haz_mta'=`refHaz' if(`refFrTo'==`tr'), replace   // is sorted correctly earlier - Ctrl+F for "sort `refTrans'"
             
 			mata: `w' = diff(1 :- `Haz_mta') 		// took out colsum for this one.  will need in stgSample and hazSamp, clearly. 
@@ -2065,12 +2065,12 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 				
 				// Subject still at risk; post.
 				if(tCurrent!=stime | stgCurrent!=sstage){	// to get rid of the possibility of odd duplicate rows
-				// path output
+                    // path output
 					if(speed==""){	// if we're not gunning it.
 						_postMe(simNo, subject, tCurrent, stgCurrent, postNm, 1)
 						if(overall>=sliceTrig) _postMe(simNo, subject, tCurrent, stgCurrent, postNm_draw, 1)
 					}
-					else{	// and if we are...	
+					else{	        // and if we are...	
 						res1[, stgPrev] = (tCurrent==. | pull==.) 	? 	res1[, stgPrev] + (tptsSet:>=tPrev :& tptsSet:<=tMax_inputted) :
 																		res1[, stgPrev] + (tptsSet:>=tPrev :& tptsSet:<tCurrent) 	
 						
@@ -2085,7 +2085,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 				_postMe(simNo, subject, tMax_inputted, stgCurrent, postNm, 1)
 				if(overall>=sliceTrig)	_postMe(simNo, subject, tMax_inputted, stgCurrent, postNm_draw, 1)	// for the big eventual datasets.
 			}
-			else{	// if we are, then write the results to res1 and be done with it			
+			else{	        // if we are, write the results to res1 and be done with it			
 				res1[,stgCurrent] = res1[,stgCurrent] + (tptsSet:>=tCurrent :& tptsSet:<=max(tptsSet))
 				
                     // quick kludge to fix any rows with >1 values 
@@ -2173,13 +2173,13 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 		// *** DISPLAY MESSAGES ***
 		if(noiYN==1){ // making sure qui's not specified
 			// display done at end of sim bracket 
-			if(( (c("processors")>1 & verbose=="") | terse!="") & percComplete==100 & shoutOnce100==0){					// multicore: display 'done' once, at the end of everything.
+			if(( (c("processors")>1 & verbose=="") | terse!="") & percComplete==100 & shoutOnce100==0){		// multicore: display 'done' once, at the end of everything.
 				_stata(`"noi di as ye "done!""')
 				shoutOnce100 = 1
 			}
 			
 			// *** DISPLAY MESSAGES ***
-			if( ( (c("processors")==1 & terse=="") | ((c("processors")>1 & verbose!="")) ) ){		// single core: display 'done' at end of each sim, via a period.
+			if( ( (c("processors")==1 & terse=="") | ((c("processors")>1 & verbose!="")) ) ){		        // single core: display 'done' at end of each sim, via a period.
 				_stata(`"noi di as wh "done!""')
 			}
 		}
