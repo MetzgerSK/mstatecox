@@ -1875,7 +1875,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 		real colvector stgSet
 		real colvector tptsSet
 		pointer ptrLB, ptrUB
-		real scalar firstRun, bktSz, stg_i
+		real scalar bktSz, stg_i
 		real matrix speedPath, tempRes
 		
 		// grab set of stages (relevant later for figuring out which column to write things to)
@@ -1991,7 +1991,6 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 			tCurrent = stime
 			tPrev = stime
 			tMax_inputted = tMax_inputted
-			firstRun = 1
 		
 			absorb = 0
 
