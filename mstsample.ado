@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 01JUN22 [v3.331]
-*! Last change: fixes NP estm (v3.331); TVC demeaning to further stabilize H0 estms (v3.3); incorporated frailty's value into msfit calculations, proper inclusion of offset() in demeaned models (v3.22); fixed clustered SE error when reestimating the demeaned models (v3.21); fixed the TVC computation (v3.2)
+*! Last edited: 12APR23 [v4.1]x
+*! Last change: gap time fix for first outward tr
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -2022,8 +2022,10 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 					
 					//* clock/gap acknowledgment
 					tHolder = tStar
-					if(clockType=="gap")	tHolder = tCurrent + tStar
-					
+					if(clockType=="gap" & tCurrent!=stime){
+                        tHolder = tCurrent + tStar
+                    }
+	
 					
 					if(tHolder<=tMax_inputted){	// less than or equal to, or else you're precluding the possibility of a transition in the last period.
 					
@@ -2039,7 +2041,7 @@ void _simMstate(			real scalar nSims,			// for number of total sims
 						stgCurrent = pull
 						tPrev = tCurrent
 						tCurrent = tStar
-						if(clockType=="gap")	tCurrent =  tPrev + tStar	// because tPrev will equal the current time, before we went updating tCurrent a few lines ago
+						if(clockType=="gap" & tPrev!=stime)	tCurrent =  tPrev + tStar	// because tPrev will equal the current time, before we went updating tCurrent a few lines ago -> also has implics for the conditional's second term (needs to be tPrev, not tCurrent)
 					}
 					else{	// we've reached the end of the time period of interest. fill the current observation through to the end of the simulated time period.
 							//** behavior for clock and gap should be same.  Fill everything forward of the current time.		
