@@ -1190,12 +1190,12 @@ qui{
 		local m_min = `r(min)'
 		local m_max = `r(max)'
 	cap matrix drop tShoot_mstate
-	
+	sort `refTrans' `refFrom' `refTo' `refT' 
+    
 	// centralize the matrix code, in case of msfit option.
 	if( ("`hazoverride'"=="" & (`m_max'>1 | `m_min'<0)) | "`msfit'"!="" ){
 		local where = "Stata"
-		sort `refTrans' `refFrom' `refTo' `refT' 
-		
+
 		count if(`refT'!=.)
 		if(`r(N)'>`c(matsize)' & `r(N)'<=`c(max_matsize)')	set matsize `r(N)'
 		if(`r(N)'<=`c(max_matsize)'){
