@@ -70,9 +70,9 @@ qui{
         _return hold `retPres'
         global temp_mstsampleNm `retPres'
         
-	** If tmax not set, use maximum observed in dataset (increments of 1). **maybe change this to list, similar to tvec, in future  (condition applic for forward or fixedh)
+	** If tmax not set, use maximum observed in estimation sample (increments of 1). **maybe change this to list, similar to tvec, in future  (condition applic for forward or fixedh)
 	if("`tmax'"=="" | `tmax'==0){
-		qui sum _t if(_d==1)
+		qui sum _t if(_d==1 & e(sample)==1)
 		local tmax = ceil(`r(max)')     // go up to next highest integer
 	}
     
