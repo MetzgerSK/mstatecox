@@ -480,7 +480,7 @@ Additionally, {bf:mstsample} posts nothing to Stata's general memory unless {bf:
 
 {synoptset 22 tabbed}{...}
 {p2col 5 15 19 2: Matrices}{p_end}
-{synopt:{cmd:tShoot_mstate}}If {cmd:msfit} specified, matrix containing values for transition-specific survivors, hazards, and cumulative hazards, and overall outward hazards.  Values are stored before
+{synopt:{cmd:tShoot_mstate}}If {cmd:msfit} specified, matrix containing values for transition-specific survivors, hazards, cumulative hazards, and overall outward hazards.  Values are stored before
 enforcing the {opt hazoverride} option, if specified.{p_end}
 
 {marker cite}{...}
