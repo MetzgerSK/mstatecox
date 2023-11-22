@@ -2,8 +2,8 @@
 // ** part of mstatecox package
 // ** see "help mst" for general package details
 
-*! Last edited: 12APR23 [v4.1]x
-*! Last change: gap time fix for first outward tr
+*! Last edited: 08NOV23 [v4.11]
+*! Last change: ensure unique sort during msfit, gap time fix for first outward tr
 *! Contact: Shawna K. Metzger, shawna@shawnakmetzger.com
 
 /* mstsample: The huge mega-wrapper.  
@@ -160,7 +160,7 @@ qui{
 	** Ensure that tmax isn't less than starting time, or else this will also be 
     ** a boring simulation.	(condition applic for forward or fixedh)
 	*** NOTE: if you hit this error message, given that you've already checked 
-    *** that sTime<max(_t), it means that the user punched in something stupid.
+    *** that sTime<max(_t), it means that the user punched in something nonsensical.
 	if(`stime'>=`tmax'){
 		noi di as error "Starting time of `stime' is greater than or equal to time range for the simulations (=`tmax').  Either pick a smaller starting time ({bf:stime()}) or choose a larger endpoint for the simulated time range ({bf:tmax()})."
 		tidy
@@ -2278,7 +2278,7 @@ program path2stage
 		qui sum `intCheck'
 		if(`r(max)'>0){
 			// If so, ceil() them, and keep the last transition that occurs in a 
-            // particular unit interval (in case there are multiples)/.
+            // particular unit interval (in case there are multiples).
 			// 		*Has* to be ceil, because if there's a transition in the 
             //      start-stop interval (e.g.) (0.9,1], you want to know where 
             //      the subject is *at the end of 1* (i.e., the integer ending 
