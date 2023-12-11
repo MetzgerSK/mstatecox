@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 23jun2022}{...}
+{* *! version 11dec2023}{...}
 {viewerjumpto "Description" "mst##description"}{...}
 {viewerjumpto "System Requirements" "mst##prereq"}{...}
 {viewerjumpto "Background Reading" "mst##toread"}{...}
@@ -45,7 +45,7 @@ probabilities, checking for proportional hazards violations in a multi-state set
 {p_end}
 
 {pstd}
-For a command suite that focuses on parametric multi-state models, see Crowther and Lambert's {stata net describe multistate:multistate} package.{p_end}
+For a command suite that focuses on parametric multi-state models, see Crowther and Lambert's {stata ssc describe multistate:multistate} package.{p_end}
 
 {pstd}
 Our package's name is a hattip to R's mstate package, which is our package's R equivalent.  See de Wreede, Fiocco, and Putter (2010) for details.{p_end}
@@ -213,5 +213,5 @@ btjones1@olemiss.edu
 
 
 {p 0 0 0}
-{bf:Last Updated} - 23JUN22
+{bf:Last Updated} - 11DEC23
 {p_end}
