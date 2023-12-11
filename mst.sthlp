@@ -40,7 +40,8 @@ However, it cannot easily generate predicted quantities from the resultant model
 to estimate transition probabilities, which describe the probability of subjects being in a particular state at a particular time, given a set of starting conditions.
 Transition probabilities are a quintessential quantity from a multi-state model, one whose interpretation is arguably the most intuitive of all the duration model interpretation techniques.{p_end}
 
-{pstd}Our command suite provides the functionality to compute transition probabilities via simulation, for any stage structure.  Our commands also provide a number of helpful utility functions for plotting any generated transition
+{pstd}Our command suite provides the functionality to compute transition probabilities via simulation, for any stage structure.  The simulations treat coefficient values as fixed.  
+Our commands also provide a number of helpful utility functions for plotting any generated transition
 probabilities, checking for proportional hazards violations in a multi-state setting, and describing the model's stage structure.
 {p_end}
 

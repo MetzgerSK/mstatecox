@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 06jan2023}{...}
+{* *! version 11dec2023}{...}
 {viewerjumpto "Syntax" "mstsample##syntax"}{...}
 {viewerjumpto "Description" "mstsample##description"}{...}
 {viewerjumpto "Calculation-Related Information" "mstsample##calcInfo"}{...}
@@ -76,7 +76,8 @@ Must set {help mstutil} before running {bf:mstsample}.  If your model has covari
 
 {pstd}
 {cmd:mstsample} is the third command you must run to generate transition probabilities from a Cox model, after {bf:mstutil} and (if semi-parametric) {bf:mstcovar}.  
-It simulates a user-specified number of subjects moving through the process of interest, as defined by the dataset's structure, the previously estimated {help stcox} model, and the covariate profile defined by {help mstcovar}.{p_end}
+It simulates a user-specified number of subjects moving through the process of interest, as defined by the dataset's structure, the previously estimated {help stcox} model, and the covariate profile defined by {help mstcovar}.
+The simulations treat coefficient values as fixed.  {p_end}
 
 {pstd}
 For an intuitive overview of how the command works, see Metzger and Jones (2016, Appendix H; 2018).  The command draws heavily on de Wreede, Fiocco, and Putter's mstate package for R, which itself makes
@@ -508,5 +509,5 @@ enforcing the {opt hazoverride} option, if specified.{p_end}
 
 
 {p 0 0 0}
-{bf:Last Updated} - 06JAN23
+{bf:Last Updated} - 11DEC23
 {p_end}
